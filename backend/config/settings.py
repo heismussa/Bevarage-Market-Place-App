@@ -136,5 +136,6 @@ SPECTACULAR_SETTINGS = {
         "PaymentStatusEnum": "payments.choices.PaymentStatus",
         "PaymentMethodEnum": "payments.choices.PaymentMethod",
         "CheckoutPaymentMethodEnum": "payments.choices.CHECKOUT_PAYMENT_METHOD_CHOICES",
+        "OrderActionEnum": "orders.state_machine.ACTION_CHOICES",
     },
 }

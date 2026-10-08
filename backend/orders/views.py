@@ -88,15 +88,17 @@ INVALID_TRANSITION_RESPONSE = error_response(
 
 def order_detail_queryset():
     history = OrderStatusHistory.objects.select_related("changed_by").order_by("changed_at", "id")
-    return Order.objects.select_related("store").prefetch_related(
+    return Order.objects.select_related("store", "customer__user").prefetch_related(
         "items", "payments", Prefetch("status_history", queryset=history)
     )
 
 
-def detail_response(order, request, response_status=status.HTTP_200_OK):
+def detail_response(
+    order, request, response_status=status.HTTP_200_OK, serializer_class=OrderDetailSerializer
+):
     order = order_detail_queryset().get(pk=order.pk)
     return Response(
-        OrderDetailSerializer(order, context={"request": request}).data, status=response_status
+        serializer_class(order, context={"request": request}).data, status=response_status
     )
 
 

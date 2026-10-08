@@ -91,6 +91,8 @@ The full endpoint list, with examples, is in the API docs. A short map by area:
 | Addresses | `addresses/`, `addresses/{id}/`, `addresses/{id}/set-default/` | Customer |
 | Cart | `cart/`, `cart/items/`, `cart/items/{id}/` | Customer |
 | Orders | `orders/`, `orders/{id}/`, `orders/{id}/cancel/` | Customer |
+| Owner orders | `owner/stores/{id}/orders/`, `owner/orders/{id}/`, `owner/orders/{id}/transition/` | Store owner |
+| Owner dashboard | `owner/stores/{id}/dashboard/`, `owner/stores/{id}/analytics/` | Store owner |
 | Admin orders | `admin/orders/{id}/cancel/` | Admin |
 
 The roadmap and business rules for each stage are in [`docs/BACKEND_PLAN.md`](docs/BACKEND_PLAN.md).

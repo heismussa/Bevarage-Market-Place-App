@@ -12,7 +12,7 @@ describes the API and business rules built on top of it.
 | 1 | Store and product APIs | Done |
 | 2 | Addresses and cart | Done |
 | 3 | Orders and state machine | Done |
-| 4 | Store order management and dashboard | Not started |
+| 4 | Store order management and dashboard | Done |
 | 5 | Payments | Not started |
 | 6 | Notifications (in-app only) | Not started |
 | 7 | Frontend handoff | Not started |
@@ -192,6 +192,10 @@ has no effect; stock is restored exactly once; customers cannot read others' ord
 
 Rules: database aggregation only (Sum, Count, TruncDate in local time); validate the
 date range; reason is mandatory for reject and cancel.
+
+As built: sales are the `total_amount` of COMPLETED orders, bucketed by the local day
+the order was placed. Daily series include zero days. Analytics defaults to the last
+30 days and allows at most 366. Top products count COMPLETED orders only.
 
 ## Stage 5: Payments
 

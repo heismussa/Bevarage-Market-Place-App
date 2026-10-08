@@ -26,6 +26,9 @@ class Action(StrEnum):
     CANCEL = "cancel"
 
 
+ACTION_CHOICES = [action.value for action in Action]
+
+
 @dataclass(frozen=True)
 class Transition:
     source: str
