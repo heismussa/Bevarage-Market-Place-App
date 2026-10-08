@@ -52,46 +52,38 @@ frontend/
 
 ## 2. Day one: from clone to a running backend (everyone)
 
-1. Clone the repository and install Docker Desktop and Node.js 20 LTS.
-2. Create the backend environment file. Get the demo passwords and the mock payment
-   secret from the backend owner **privately** (never in chat groups or commits).
+The full step-by-step guide (installs, daily routine, troubleshooting) is in the
+"Start here" pages of `docs/FRONTEND_TASKS.pdf`. In short:
+
+1. Install Git, Docker Desktop and Node.js 20 LTS, and accept the GitHub invitation.
+2. Clone and run the setup script. It creates your own `.env` with random local
+   secrets (nobody sends secrets around), starts Docker, migrates, loads demo data, and
+   prints your demo logins and the address your phone should use.
 
    ```powershell
-   Copy-Item .env.example .env
+   git clone https://github.com/heismussa/Bevarage-Market-Place-App.git
+   cd Bevarage-Market-Place-App
+   powershell -ExecutionPolicy Bypass -File scripts\setup-dev.ps1   # Windows
+   bash scripts/setup-dev.sh                                        # macOS / Linux
    ```
 
-3. Allow the frontends to reach the API. In `.env`:
-
-   ```
-   ALLOWED_HOSTS=localhost,127.0.0.1,backend,10.0.2.2,192.168.1.50
-   CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8081
-   ```
-
-   - `5173` is the Vite dashboard and `8081` is Expo web.
-   - `10.0.2.2` is how the Android emulator reaches your computer.
-   - Replace `192.168.1.50` with your computer's Wi-Fi IP (`ipconfig`) so a real phone
-     running Expo Go can reach the API. The phone and computer must be on the same Wi-Fi.
-   - Native mobile requests do not need CORS; only the browser does.
-
-4. Start and seed the backend:
-
-   ```powershell
-   docker compose up --build -d
-   docker compose exec backend python manage.py migrate
-   docker compose exec backend python manage.py seed_demo
-   ```
-
-5. Open <http://localhost:8000/api/docs/>, log in as the demo customer with
+   The generated `.env` sets `ALLOWED_HOSTS=*` (so phones on your Wi-Fi can connect)
+   and allows `http://localhost:5173` (Vite) and `http://localhost:8081` (Expo web) for
+   CORS. It is for local development only. The Android emulator reaches your computer
+   at `10.0.2.2`.
+3. Open <http://localhost:8000/api/docs/>, log in as the demo customer with
    `POST /api/v1/auth/login/`, and try `GET /api/v1/stores/`. If that works, the backend
    is ready.
-6. Useful backend commands while building screens:
+4. Questions go in GitHub Issues with the "Backend question or problem" template;
+   pull requests use the template in `.github/`.
+5. Useful backend commands while building screens:
 
    | Need | Command |
    | --- | --- |
    | See a password reset code | `docker compose logs backend` (look for "SMS to") |
    | Approve a mobile-money payment | `docker compose exec backend python manage.py simulate_mobile_money <transaction_reference>` |
    | Decline it | add `--fail` to the command above |
-   | Reset to clean demo data | `docker compose down -v`, then steps 4 again |
+   | Reset to clean demo data | `docker compose down -v`, then run the setup script again |
 
 ---
 

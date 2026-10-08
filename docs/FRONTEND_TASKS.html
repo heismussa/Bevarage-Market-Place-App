@@ -23,7 +23,8 @@
   .person { display: inline-block; padding: 2px 8px; border-radius: 10px; color: #fff; font-weight: 600; font-size: 9.5pt; }
   .a { background: #2563eb; } .b { background: #16a34a; } .c { background: #9333ea; } .t { background: #475569; }
   .break { page-break-before: always; }
-  ul { margin: 4px 0 8px 18px; padding: 0; }
+  ul, ol { margin: 4px 0 8px 18px; padding: 0; }
+  pre { font-family: Consolas, monospace; font-size: 9pt; background: #1f2328; color: #f6f8fa; padding: 8px 10px; border-radius: 6px; white-space: pre-wrap; page-break-inside: avoid; margin: 6px 0 10px; }
   li { margin: 2px 0; }
 </style>
 </head>
@@ -35,9 +36,9 @@
 <div class="box">
 <b>How to read this document.</b> Every task is small (a quarter of a day to two days).
 Each has an ID (for example <b>A-07</b>), the work, how we know it is done, the size in days,
-and the tasks it waits for. Put each task on your board (Trello, GitHub Projects, Jira) as one card,
-and use the ID in the branch name and pull request title, for example <code>feat/A-07-token-refresh</code>.
-Read <code>docs/FRONTEND_HANDOFF.md</code> before starting; it has every endpoint, error code and sample response.
+and the tasks it waits for. Each task is one card on the GitHub Projects board; use the ID in the branch
+name and pull request title, for example <code>feat/A-07-token-refresh</code>.
+<b>New to the project? Start with the "Start here" pages.</b> <code>docs/FRONTEND_HANDOFF.md</code> has every endpoint, error code and sample response.
 </div>
 
 <table>
@@ -47,16 +48,126 @@ Read <code>docs/FRONTEND_HANDOFF.md</code> before starting; it has every endpoin
   <tr><td><span class="person c">Developer C</span></td><td>Owner dashboard: layout, dashboard, orders, products, low stock, analytics, export</td><td>about 15.5 days</td></tr>
 </table>
 
-<h2>Step 0: Everyone, day 1 (before any task)</h2>
+<h2 class="break">Start here: from clone to your first pull request</h2>
+<p>Everything you need is in this document and in the repository. You should not need a call to get started.
+When something is unclear, follow <b>"When you are stuck"</b> below.</p>
+
+<h3>1. Accounts and installs (once)</h3>
 <table>
-  <tr><th>ID</th><th>Task</th><th>Done when</th><th>Days</th></tr>
-  <tr><td class="id">S-01</td><td>Install Git, Docker Desktop, Node.js 20 LTS, VS Code or Cursor, and Expo Go on your phone.</td><td>All installed.</td><td class="d">0.25</td></tr>
-  <tr><td class="id">S-02</td><td>Clone the repository. Copy <code>.env.example</code> to <code>.env</code>. Get the demo passwords and <code>MOCK_PAYMENT_WEBHOOK_SECRET</code> privately from the project lead.</td><td><code>.env</code> exists and is not committed.</td><td class="d">0.25</td></tr>
-  <tr><td class="id">S-03</td><td>In <code>.env</code> add your computer's Wi-Fi IP (from <code>ipconfig</code>) and <code>10.0.2.2</code> to <code>ALLOWED_HOSTS</code>; set <code>CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8081</code>.</td><td>Values saved.</td><td class="d">0.1</td></tr>
-  <tr><td class="id">S-04</td><td>Run <code>docker compose up --build -d</code>, then <code>docker compose exec backend python manage.py migrate</code> and <code>... seed_demo</code>.</td><td><a>http://localhost:8000/api/docs/</a> opens.</td><td class="d">0.25</td></tr>
-  <tr><td class="id">S-05</td><td>In the API docs page, log in as the demo customer and call <code>GET /api/v1/stores/</code>. Log in as the ABC Drinks owner and call <code>GET /api/v1/owner/stores/</code>.</td><td>Both return data.</td><td class="d">0.25</td></tr>
-  <tr><td class="id">S-06</td><td>Read <code>docs/FRONTEND_HANDOFF.md</code> sections 1 to 6 (auth, errors, statuses, your screens, must / must not).</td><td>Questions written down for the first check-in.</td><td class="d">0.5</td></tr>
+  <tr><th>What</th><th>Notes</th></tr>
+  <tr><td>GitHub account</td><td>The project lead adds you to the repository. Accept the invitation e-mail from GitHub.</td></tr>
+  <tr><td>Git</td><td><a>git-scm.com</a>. On Windows keep the default options (it also installs Git Bash).</td></tr>
+  <tr><td>Docker Desktop</td><td><a>docker.com/products/docker-desktop</a>. On Windows accept "Use WSL 2" and restart the computer. Open it once and wait until it says <b>Engine running</b>.</td></tr>
+  <tr><td>Node.js 20 LTS</td><td><a>nodejs.org</a>. Check with <code>node -v</code> (v20.x).</td></tr>
+  <tr><td>Editor</td><td>VS Code or Cursor, with the ESLint and Prettier extensions.</td></tr>
+  <tr><td>Expo Go (Developer A and B)</td><td>From the Play Store or App Store on your phone. Android Studio (emulator) is optional.</td></tr>
 </table>
+
+<h3>2. Clone and start the backend (one command)</h3>
+<pre>git clone https://github.com/heismussa/Bevarage-Market-Place-App.git
+cd Bevarage-Market-Place-App
+
+# Windows (PowerShell)
+powershell -ExecutionPolicy Bypass -File scripts\setup-dev.ps1
+
+# macOS / Linux
+bash scripts/setup-dev.sh</pre>
+<p>The script creates <b>your own</b> <code>.env</code> with random local passwords (nobody needs to send you
+secrets), starts Docker, creates the database, loads demo data, and prints your demo logins and the address
+your phone should use. The first run takes 5 to 10 minutes. It is safe to run again at any time.</p>
+
+<h3>3. Check that it works (5 minutes)</h3>
+<ol>
+  <li>Open <code>http://localhost:8000/api/docs/</code>.</li>
+  <li>Open <code>POST /api/v1/auth/login/</code>, press <b>Try it out</b>, send the customer phone <code>+255712345002</code> and the customer password the script printed.</li>
+  <li>Copy the <code>access</code> value, press <b>Authorize</b> at the top, paste it.</li>
+  <li>Run <code>GET /api/v1/stores/</code>. You should see <b>ABC Drinks</b> and <b>Fresh Beverages</b>. Done.</li>
+</ol>
+
+<h3>4. First days</h3>
+<table>
+  <tr><th>ID</th><th>Who</th><th>Task</th><th>Done when</th><th>Days</th></tr>
+  <tr><td class="id">S-01</td><td>All</td><td>Steps 1 to 3 above.</td><td>Stores list works in the API docs.</td><td class="d">0.5</td></tr>
+  <tr><td class="id">S-02</td><td>All</td><td>Read <code>docs/FRONTEND_HANDOFF.md</code> sections 1 to 6 and the sections for your screens. Try your screens' endpoints in the API docs.</td><td>You know which endpoints your first five tasks call.</td><td class="d">0.5</td></tr>
+  <tr><td class="id">S-03</td><td>B, C</td><td>Until A-02 and A-03 are merged (about day 2), save the sample JSON for your first screens from the handoff into a <code>mocks/</code> folder in your branch.</td><td>Mock files ready.</td><td class="d">0.25</td></tr>
+  <tr><td class="id">S-04</td><td>B, C</td><td>When A announces "A-01 to A-03 merged" on the board: <code>git pull</code>, then <code>cd frontend</code> and <code>npm install</code>, and start your app.</td><td>Your app opens.</td><td class="d">0.25</td></tr>
+</table>
+
+<h3>5. Your daily routine</h3>
+<pre># start of day
+docker compose up -d              # Docker Desktop must be running
+git checkout main
+git pull
+cd frontend
+npm install                       # only if package.json changed
+npm run gen:api                   # only if docs/openapi.yaml changed
+
+# work on one task
+git checkout -b feat/B-11-cart-screen
+git add .
+git commit -m "feat(customer): add cart screen"
+git push -u origin feat/B-11-cart-screen
+#   -> open the pull request on GitHub; the template lists what to check
+
+# end of day
+docker compose stop               # keeps your data</pre>
+<ul>
+  <li>One task = one branch = one pull request. Name: <code>feat/&lt;task-id&gt;-&lt;short-name&gt;</code> or <code>fix/...</code>.</li>
+  <li>Another developer reviews and approves; then use <b>Squash and merge</b> and delete the branch.</li>
+  <li>Review teammates' pull requests within one working day.</li>
+</ul>
+
+<h3>6. Picking tasks</h3>
+<ul>
+  <li>The tasks are cards on the GitHub <b>Projects</b> board, with columns <b>To do</b>, <b>In progress</b>, <b>In review</b> and <b>Done</b>.</li>
+  <li>Take the next task in your list, assign yourself and move the card to In progress. Put the task ID in the pull request title. Move the card to Done when it is merged.</li>
+  <li>Only start a task when everything in its <b>Waits for</b> column is Done, or build it against mock JSON and connect it later.</li>
+</ul>
+
+<h3>7. When you are stuck (no call needed)</h3>
+<ol>
+  <li>Search <code>docs/FRONTEND_HANDOFF.md</code> (Ctrl+F the endpoint or the error code).</li>
+  <li>Try the same request in the API docs page.</li>
+  <li>Check the troubleshooting table below.</li>
+  <li>Still stuck: open a GitHub <b>Issue</b> with the <b>"Backend question or problem"</b> template (request, response, error code). Work on another task while you wait for the written answer.</li>
+  <li>Found a bug in a teammate's screen: open an Issue with the <b>"Bug in the app"</b> template and assign it to them.</li>
+</ol>
+<p><b>Every Friday</b>, each developer adds a short screen recording (1 to 2 minutes) of what they finished to their merged pull requests or the team chat.</p>
+
+<h3>8. Useful backend commands</h3>
+<table>
+  <tr><th>Need</th><th>Command</th></tr>
+  <tr><td>See the forgot-password code</td><td><code>docker compose logs backend</code> and look for "SMS to"</td></tr>
+  <tr><td>Approve a mobile-money payment</td><td><code>docker compose exec backend python manage.py simulate_mobile_money &lt;transaction_reference&gt;</code> (from the <code>pay/</code> response)</td></tr>
+  <tr><td>Decline it</td><td>Same command with <code>--fail</code> at the end</td></tr>
+  <tr><td>Reset to clean demo data</td><td><code>docker compose down -v</code>, then run the setup script again</td></tr>
+  <tr><td>Backend errors</td><td><code>docker compose logs -f backend</code></td></tr>
+  <tr><td>Your demo passwords</td><td>Open <code>.env</code> and look for <code>DEMO_..._PASSWORD</code></td></tr>
+</table>
+
+<h3>9. Troubleshooting</h3>
+<table>
+  <tr><th>Problem</th><th>Fix</th></tr>
+  <tr><td>"running scripts is disabled" on Windows</td><td>Use the exact command above with <code>-ExecutionPolicy Bypass</code>.</td></tr>
+  <tr><td>"Docker is not running"</td><td>Open Docker Desktop and wait for "Engine running", then try again.</td></tr>
+  <tr><td>Port 8000 or 5432 is already in use</td><td>Another program (often a local PostgreSQL) uses it. Stop that program or service, then run the script again.</td></tr>
+  <tr><td>Phone (Expo Go) cannot reach the API</td><td>Phone and computer on the same Wi-Fi. Use the "From your phone" address the script printed as <code>EXPO_PUBLIC_API_URL</code>. Allow port 8000 in Windows Firewall for private networks. Android emulator: use <code>http://10.0.2.2:8000/api/v1/</code>.</td></tr>
+  <tr><td>Browser says "blocked by CORS policy"</td><td>Run the dashboard on <code>http://localhost:5173</code> (Vite default). For another port, add it to <code>CORS_ALLOWED_ORIGINS</code> in <code>.env</code> and run <code>docker compose up -d</code>.</td></tr>
+  <tr><td>Demo login fails</td><td>Use the passwords in your own <code>.env</code>. If you changed them after the first run, reset demo data (see above).</td></tr>
+  <tr><td><code>401 TOKEN_INVALID</code> on every call</td><td>The access token expired (30 minutes) or the password changed. Log in again; check the refresh logic (task A-07).</td></tr>
+  <tr><td>Payment screen waits forever</td><td>Mobile money is simulated: run <code>simulate_mobile_money</code> with the order's <code>transaction_reference</code>.</td></tr>
+  <tr><td>TypeScript errors right after <code>git pull</code></td><td>Run <code>npm install</code> and <code>npm run gen:api</code> in <code>frontend/</code>.</td></tr>
+  <tr><td>Git asks for a password when pushing</td><td>Sign in with GitHub Desktop, or run <code>gh auth login</code>, or use a personal access token as the password.</td></tr>
+</table>
+
+<h3>10. Five rules</h3>
+<ol>
+  <li>Never push to <code>main</code>; always a pull request.</li>
+  <li>Never commit <code>.env</code>, passwords, tokens or secrets.</li>
+  <li>Never change files in <code>backend/</code>; ask in an Issue instead.</li>
+  <li>Never calculate prices, totals or statuses in the app; show what the server sends.</li>
+  <li>Questions and decisions go in GitHub Issues, so everyone can read the answer later.</li>
+</ol>
 
 <!-- ===================== DEVELOPER A ===================== -->
 <h2 class="break"><span class="person a">Developer A</span> Foundation, accounts and notifications</h2>

@@ -24,6 +24,16 @@ Driver and Delivery tables are in the ERD for later and are not implemented.
 
 ## Setup
 
+Quick start for local development: one script creates `.env` with random local
+secrets, starts Docker, migrates and loads demo data.
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts\setup-dev.ps1   # Windows
+bash scripts/setup-dev.sh                                        # macOS / Linux
+```
+
+The generated `.env` is for local development only (`ALLOWED_HOSTS=*`). Manual setup:
+
 1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 2. Copy the environment file and replace the placeholders:
 
