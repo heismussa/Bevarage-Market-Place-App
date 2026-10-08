@@ -13,8 +13,8 @@ describes the API and business rules built on top of it.
 | 2 | Addresses and cart | Done |
 | 3 | Orders and state machine | Done |
 | 4 | Store order management and dashboard | Done |
-| 5 | Payments | Not started |
-| 6 | Notifications (in-app only) | Not started |
+| 5 | Payments | Done |
+| 6 | Notifications (in-app only) | Done |
 | 7 | Frontend handoff | Not started |
 
 ## Global rules (apply to every stage)
@@ -231,8 +231,19 @@ cancelled.
 - **2026-10-08, cart totals:** only buyable lines count toward the subtotal.
 - **2026-10-08, store logo:** keep the API field and column name `logo`.
 - **2026-10-08, refunds:** paying is only possible for what the store has, so refunds
-  are expected mainly for overpayment or double payment. Revisit in Stage 5.
+  are expected mainly for overpayment or double payment. Stage 5 records a
+  REFUND_REQUIRED order-history note for a wrong amount, a second payment, a payment
+  arriving after cancel or reject, and cancelling or rejecting a paid order. Refunds
+  themselves are manual.
 - **2026-10-08, admin cancel:** built as an API endpoint for a future admin screen.
+- **2026-10-08, sales:** counted on the order day and include the delivery fee.
+- **2026-10-08, payment expiry:** only unpaid mobile money orders expire. Cash orders
+  never do. An order with a prompt still PROCESSING also expires; if its money arrives
+  later, the webhook records it and adds a REFUND_REQUIRED note.
+- **2026-10-08, notifications:** the customer is told about every status change,
+  including their own cancel. A cancel not made by the store owner (customer, admin,
+  expiry) also tells the store owner, but only if the store could already see the
+  order. LOW_STOCK is raised by customer orders only, not by the owner editing stock.
 
 ## Follow-ups after all stages
 

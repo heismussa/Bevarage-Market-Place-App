@@ -22,6 +22,7 @@ from orders.state_machine import (
     allowed_actions,
     find_transition,
 )
+from payments import services as payment_services
 from payments.choices import MOBILE_MONEY_METHODS, PaymentStatus
 from payments.models import Payment
 from stores.models import StoreStatus
@@ -181,11 +182,15 @@ def create_order(customer, address_id, payment_method, payer_phone=None, notes=N
         for product, quantity, line_total in lines
     )
 
-    # 7. Take the stock.
+    # 7. Take the stock. Products are locked, so their loaded stock is the "before" value.
+    low_stock = []
     for product, quantity, _ in lines:
         Product.objects.filter(pk=product.pk).update(
             stock_quantity=F("stock_quantity") - quantity, updated_at=timezone.now()
         )
+        remaining = product.stock_quantity - quantity
+        if events.crossed_low_stock(product, product.stock_quantity, remaining):
+            low_stock.append((product, remaining))
     sync_availability(Product.objects.filter(pk__in=quantities))
 
     # 8. History, 9. payment.
@@ -208,6 +213,8 @@ def create_order(customer, address_id, payment_method, payer_phone=None, notes=N
     cart.save(update_fields=["store", "updated_at"])
 
     transaction.on_commit(lambda: events.notify_order_event(order, events.ORDER_CREATED))
+    if low_stock:
+        transaction.on_commit(lambda: events.notify_low_stock(store.owner_id, low_stock))
     return order
 
 
@@ -217,7 +224,7 @@ def create_order(customer, address_id, payment_method, payer_phone=None, notes=N
 def _ensure_visible(order, user, actor):
     """Services enforce ownership too, so a caller cannot act on an order it cannot see."""
     visible = (
-        actor == Actor.ADMIN
+        actor in (Actor.ADMIN, Actor.SYSTEM)
         or (actor == Actor.CUSTOMER and order.customer_id == user.pk)
         or (actor == Actor.STORE_OWNER and order.store.owner_id == user.pk)
     )
@@ -236,14 +243,6 @@ def _restore_stock(order):
             updated_at=timezone.now(),
         )
     sync_availability(Product.objects.filter(pk__in=quantities))
-
-
-def _cancel_open_payments(order):
-    Payment.objects.filter(order=order, payment_status=PaymentStatus.PENDING).update(
-        payment_status=PaymentStatus.CANCELLED, updated_at=timezone.now()
-    )
-    if order.payment_status == PaymentStatus.PENDING:
-        order.payment_status = PaymentStatus.CANCELLED
 
 
 @transaction.atomic
@@ -274,11 +273,17 @@ def transition_order(order, action, actor_user, reason=None):
     previous = order.order_status
     order.order_status = transition.target
     update_fields = ["order_status", "updated_at"]
+    notes = reason
     if transition.target in STOCK_RESTORING_STATUSES:
         order.status_reason = reason
         _restore_stock(order)
-        _cancel_open_payments(order)
+        if order.payment_status == PaymentStatus.SUCCESS:
+            notes = f"{payment_services.REFUND_REQUIRED}: order was paid. {reason or ''}".strip()
+        payment_services.cancel_unstarted_payments(order)
         update_fields += ["status_reason", "payment_status"]
+    elif transition.target == OrderStatus.COMPLETED:
+        if payment_services.collect_cash_on_completion(order):
+            update_fields.append("payment_status")
     order.save(update_fields=update_fields)
 
     OrderStatusHistory.objects.create(
@@ -286,8 +291,8 @@ def transition_order(order, action, actor_user, reason=None):
         from_status=previous,
         status=transition.target,
         changed_by=actor_user,
-        notes=reason,
+        notes=notes,
     )
     event = events.status_event(transition.target)
-    transaction.on_commit(lambda: events.notify_order_event(order, event))
+    transaction.on_commit(lambda: events.notify_order_event(order, event, actor))
     return order

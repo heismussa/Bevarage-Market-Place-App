@@ -1,7 +1,8 @@
 """Store dashboard and analytics. Every number is aggregated by the database.
 
 Days are local calendar days (settings.TIME_ZONE). Sales are the total_amount of
-COMPLETED orders, bucketed by the day the order was placed.
+COMPLETED orders (delivery fee included), bucketed by the day the order was placed.
+Unpaid non-cash orders are invisible to the store owner and are not counted.
 """
 
 from datetime import timedelta
@@ -14,6 +15,7 @@ from django.utils import timezone
 from catalog.models import Product
 from orders.models import Order, OrderItem, OrderStatus
 from payments.models import Payment
+from payments.services import visible_to_store_owner
 
 ZERO = Value(Decimal("0.00"), output_field=DecimalField(max_digits=14, decimal_places=2))
 LOW_STOCK_LIMIT = 10
@@ -72,9 +74,13 @@ def daily_sales(store, start, end):
     return series
 
 
+def store_orders(store):
+    """Orders the store owner may see (unpaid non-cash orders are hidden)."""
+    return visible_to_store_owner(Order.objects.filter(store=store))
+
+
 def dashboard(store):
-    orders = Order.objects.filter(store=store)
-    totals = _order_totals(orders)
+    totals = _order_totals(store_orders(store))
     low_stock = Product.objects.filter(
         store=store, deleted_at__isnull=True, stock_quantity__lte=F("low_stock_threshold")
     )
@@ -86,7 +92,9 @@ def dashboard(store):
         "low_stock_count": low_stock.count(),
         "low_stock_items": list(low_stock.order_by("stock_quantity", "name")[:LOW_STOCK_LIMIT]),
         "sales_last_7_days": daily_sales(store, today - timedelta(days=6), today),
-        "recent_orders": list(owner_order_queryset().filter(store=store)[:RECENT_ORDERS_LIMIT]),
+        "recent_orders": list(
+            visible_to_store_owner(owner_order_queryset().filter(store=store))[:RECENT_ORDERS_LIMIT]
+        ),
     }
 
 
@@ -106,7 +114,7 @@ def top_products(store, start, end):
 
 
 def analytics(store, start, end):
-    totals = _order_totals(_in_days(Order.objects.filter(store=store), start, end))
+    totals = _order_totals(_in_days(store_orders(store), start, end))
     return {
         "date_from": start,
         "date_to": end,

@@ -5,7 +5,13 @@ from zoneinfo import ZoneInfo
 from django.test import TestCase
 from django.utils import timezone
 
-from core.testing.factories import OrderFactory, OrderItemFactory, ProductFactory, StoreFactory
+from core.testing.factories import (
+    OrderFactory,
+    OrderItemFactory,
+    PaymentFactory,
+    ProductFactory,
+    StoreFactory,
+)
 from orders import reports
 from orders.models import Order, OrderStatus
 
@@ -19,6 +25,7 @@ def at(day, hour, minute=0):
 def make_order(store, status, total, ordered_at, items=()):
     order = OrderFactory(store=store, order_status=status, total_amount=Decimal(total))
     Order.objects.filter(pk=order.pk).update(ordered_at=ordered_at)
+    PaymentFactory(order=order)
     for product, quantity in items:
         OrderItemFactory(order=order, product=product, quantity=quantity)
     return order

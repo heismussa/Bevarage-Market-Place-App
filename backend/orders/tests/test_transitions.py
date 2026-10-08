@@ -58,6 +58,7 @@ class TransitionServiceTests(TestCase):
             Actor.CUSTOMER: self.customer.user,
             Actor.STORE_OWNER: self.store.owner.user,
             Actor.ADMIN: self.admin,
+            Actor.SYSTEM: None,
         }
 
     def make_order(self, status):

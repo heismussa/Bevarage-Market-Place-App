@@ -15,6 +15,7 @@ class Actor(StrEnum):
     CUSTOMER = "CUSTOMER"
     STORE_OWNER = "STORE_OWNER"
     ADMIN = "ADMIN"
+    SYSTEM = "SYSTEM"  # background jobs such as expire_unpaid_orders; no user
 
 
 class Action(StrEnum):
@@ -44,6 +45,7 @@ TRANSITIONS = (
     Transition(S.PENDING, Action.REJECT, Actor.STORE_OWNER, S.REJECTED, reason_required=True),
     Transition(S.PENDING, Action.CANCEL, Actor.CUSTOMER, S.CANCELLED),
     Transition(S.PENDING, Action.CANCEL, Actor.ADMIN, S.CANCELLED, reason_required=True),
+    Transition(S.PENDING, Action.CANCEL, Actor.SYSTEM, S.CANCELLED, reason_required=True),
     Transition(S.ACCEPTED, Action.PREPARE, Actor.STORE_OWNER, S.PREPARING),
     Transition(S.ACCEPTED, Action.CANCEL, Actor.STORE_OWNER, S.CANCELLED, reason_required=True),
     Transition(S.ACCEPTED, Action.CANCEL, Actor.ADMIN, S.CANCELLED, reason_required=True),
@@ -68,7 +70,10 @@ _ACTOR_BY_ROLE = {
 
 
 def actor_for(user):
-    """The state-machine actor for a user, or None if the role cannot change orders."""
+    """The state-machine actor for a user, or None if the role cannot change orders.
+    user=None means the system itself."""
+    if user is None:
+        return Actor.SYSTEM
     return _ACTOR_BY_ROLE.get(getattr(user, "role", None))
 
 

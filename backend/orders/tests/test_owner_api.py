@@ -54,6 +54,7 @@ class OwnerOrderListTests(ApiTestCase):
 
     def make(self, day, name="Asha Juma", **kwargs):
         customer = CustomerFactory(user__full_name=name)
+        kwargs.setdefault("payment_status", "SUCCESS")
         order = OrderFactory(store=self.store, customer=customer, **kwargs)
         Order.objects.filter(pk=order.pk).update(
             ordered_at=datetime.combine(day, time(12), tzinfo=DAR)
@@ -259,6 +260,7 @@ class DashboardAndAnalyticsApiTests(ApiTestCase):
                 ordered_at=datetime.combine(self.today, time(0, minute), tzinfo=DAR)
             )
             OrderItemFactory(order=order, product=cola, quantity=2)
+            PaymentFactory(order=order)
 
     def test_dashboard(self):
         with CaptureQueriesContext(connection) as queries:

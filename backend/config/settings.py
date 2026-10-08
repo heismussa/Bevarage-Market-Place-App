@@ -122,6 +122,13 @@ SIMPLE_JWT = {
     "USER_ID_CLAIM": "user_id",
 }
 
+# Payments. Provider secrets come only from the environment.
+PAYMENT_TIMEOUT_MINUTES = env.int("PAYMENT_TIMEOUT_MINUTES", default=15)
+PAYMENT_INITIATION_RATE = env("PAYMENT_INITIATION_RATE", default="5/min")
+MOBILE_MONEY_PROVIDER = env("MOBILE_MONEY_PROVIDER", default="mock")
+# Empty secret means every mock webhook is rejected.
+MOCK_PAYMENT_WEBHOOK_SECRET = env("MOCK_PAYMENT_WEBHOOK_SECRET", default="")
+
 SPECTACULAR_SETTINGS = {
     "TITLE": "Beverage Delivery Marketplace API",
     "DESCRIPTION": "Backend foundation for the beverage delivery marketplace.",

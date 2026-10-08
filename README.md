@@ -55,7 +55,11 @@ Driver and Delivery tables are in the ERD for later and are not implemented.
 | Format | `docker compose exec backend ruff format .` |
 | Check for missing migrations | `docker compose exec backend python manage.py makemigrations --check --dry-run` |
 | Validate the OpenAPI schema | `docker compose exec backend python manage.py spectacular --validate --fail-on-warn --file /tmp/schema.yml` |
+| Cancel unpaid mobile money orders | `docker compose exec backend python manage.py expire_unpaid_orders` |
+| Approve a mock mobile money payment | `docker compose exec backend python manage.py simulate_mobile_money <transaction_reference>` (add `--fail` to decline) |
 | Stop the stack | `docker compose down` |
+
+`expire_unpaid_orders` cancels PENDING mobile money orders that were not paid within `PAYMENT_TIMEOUT_MINUTES` and puts their stock back. Run it from cron every few minutes; running it twice is safe. The mock payment provider needs `MOCK_PAYMENT_WEBHOOK_SECRET` set in `.env`.
 
 `seed_demo` is safe to run twice. It will not duplicate rows and it will not reset passwords that were already set.
 
@@ -94,6 +98,9 @@ The full endpoint list, with examples, is in the API docs. A short map by area:
 | Owner orders | `owner/stores/{id}/orders/`, `owner/orders/{id}/`, `owner/orders/{id}/transition/` | Store owner |
 | Owner dashboard | `owner/stores/{id}/dashboard/`, `owner/stores/{id}/analytics/` | Store owner |
 | Admin orders | `admin/orders/{id}/cancel/` | Admin |
+| Payments | `orders/{id}/pay/`, `orders/{id}/payment/` | Customer |
+| Payment webhooks | `payments/webhook/{provider}/` | Payment provider (signed) |
+| Notifications | `notifications/`, `notifications/unread-count/`, `notifications/{id}/read/`, `notifications/read-all/` | Any signed-in user |
 
 The roadmap and business rules for each stage are in [`docs/BACKEND_PLAN.md`](docs/BACKEND_PLAN.md).
 
@@ -130,11 +137,11 @@ Every error response has the same body:
 | Status | Code |
 | --- | --- |
 | 400 | `VALIDATION_ERROR`, `PARSE_ERROR` |
-| 401 | `NOT_AUTHENTICATED`, `AUTHENTICATION_FAILED`, `TOKEN_INVALID` |
+| 401 | `NOT_AUTHENTICATED`, `AUTHENTICATION_FAILED`, `TOKEN_INVALID`, `INVALID_SIGNATURE` (webhooks only) |
 | 403 | `PERMISSION_DENIED` |
 | 404 | `NOT_FOUND` |
 | 405 | `METHOD_NOT_ALLOWED` |
-| 409 | `CONFLICT`, `CART_STORE_CONFLICT`, `PRODUCT_UNAVAILABLE`, `STORE_CLOSED`, `INSUFFICIENT_STOCK`, `EMPTY_CART`, `INVALID_TRANSITION` |
+| 409 | `CONFLICT`, `CART_STORE_CONFLICT`, `PRODUCT_UNAVAILABLE`, `STORE_CLOSED`, `INSUFFICIENT_STOCK`, `EMPTY_CART`, `INVALID_TRANSITION`, `PAYMENT_NOT_ALLOWED`, `PAYMENT_IN_PROGRESS` |
 | 429 | `THROTTLED` (`details.wait_seconds`) |
 | 500 | `INTERNAL_ERROR` |
 

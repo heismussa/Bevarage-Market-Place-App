@@ -30,6 +30,7 @@ from orders.views import (
     detail_response,
     order_detail_queryset,
 )
+from payments.services import visible_to_store_owner
 from stores.models import Store
 
 OWNER_ORDER_LIST_EXAMPLE = {
@@ -110,7 +111,8 @@ class OwnedStoreMixin:
         summary="List my store's orders",
         description=(
             "Newest first. date_from and date_to are local calendar days, both inclusive. "
-            "search matches the order number or the customer's name."
+            "search matches the order number or the customer's name. Cash orders appear at "
+            "once; mobile-money orders appear only after payment_status is SUCCESS."
         ),
         responses={
             200: OwnerOrderListSerializer(many=True),
@@ -129,12 +131,17 @@ class OwnerStoreOrderListView(OwnedStoreMixin, generics.ListAPIView):
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return Order.objects.none()
-        return reports.owner_order_queryset().filter(store=self.store)
+        return visible_to_store_owner(reports.owner_order_queryset().filter(store=self.store))
 
 
 class OwnerOrderMixin(OwnerScopedQuerysetMixin):
+    """Unpaid non-cash orders do not exist for the store owner yet (404)."""
+
     permission_classes = [IsStoreOwner]
     owner_field = OwnerField.STORE_OF_OBJECT
+
+    def get_queryset(self):
+        return visible_to_store_owner(super().get_queryset())
 
 
 @extend_schema_view(
