@@ -1,8 +1,10 @@
+from decimal import Decimal
+
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
-from accounts.models import User, UserRole
+from accounts.models import Address, User, UserRole
 from accounts.validators import validate_phone
 
 REGISTRATION_ROLE_CHOICES = (
@@ -96,3 +98,42 @@ class MeSerializer(serializers.ModelSerializer):
         if not value:
             return None
         return value.strip().lower()
+
+
+class AddressSerializer(serializers.ModelSerializer):
+    """is_default is read-only: the first address becomes default automatically and
+    POST /addresses/{id}/set-default/ changes it."""
+
+    class Meta:
+        model = Address
+        fields = (
+            "id",
+            "address_name",
+            "address_line",
+            "city",
+            "area",
+            "latitude",
+            "longitude",
+            "phone",
+            "is_default",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "is_default", "created_at", "updated_at")
+        extra_kwargs = {
+            "latitude": {"min_value": Decimal("-90"), "max_value": Decimal("90")},
+            "longitude": {"min_value": Decimal("-180"), "max_value": Decimal("180")},
+        }
+
+    def validate_phone(self, value):
+        validate_phone(value)
+        return value
+
+    def validate(self, attrs):
+        latitude = attrs.get("latitude", getattr(self.instance, "latitude", None))
+        longitude = attrs.get("longitude", getattr(self.instance, "longitude", None))
+        if (latitude is None) != (longitude is None):
+            raise serializers.ValidationError(
+                {"latitude": ["latitude and longitude must be sent together."]}
+            )
+        return attrs

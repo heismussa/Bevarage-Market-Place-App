@@ -81,6 +81,18 @@ Both store owners use `DEMO_STORE_OWNER_PASSWORD`.
 - `POST /api/v1/auth/refresh/` with `refresh`
 - `GET` and `PATCH /api/v1/auth/me/` with `Authorization: Bearer <access>`
 
+The full endpoint list, with examples, is in the API docs. A short map by area:
+
+| Area | Endpoints | Who |
+| --- | --- | --- |
+| Catalog | `categories/`, `stores/`, `stores/{id}/`, `stores/{id}/products/`, `products/{id}/` | Anyone |
+| Owner stores | `owner/stores/`, `owner/stores/{id}/` | Store owner |
+| Owner products | `owner/stores/{store_id}/products/`, `owner/products/{id}/`, `owner/products/{id}/stock/` | Store owner |
+| Addresses | `addresses/`, `addresses/{id}/`, `addresses/{id}/set-default/` | Customer |
+| Cart | `cart/`, `cart/items/`, `cart/items/{id}/` | Customer |
+
+The roadmap and business rules for each stage are in [`docs/BACKEND_PLAN.md`](docs/BACKEND_PLAN.md).
+
 Phone numbers are stored as `+255` followed by 9 digits, for example `+255712345678`.
 
 ## Tests
@@ -118,7 +130,7 @@ Every error response has the same body:
 | 403 | `PERMISSION_DENIED` |
 | 404 | `NOT_FOUND` |
 | 405 | `METHOD_NOT_ALLOWED` |
-| 409 | `CONFLICT` or a specific business code |
+| 409 | `CONFLICT`, `CART_STORE_CONFLICT`, `PRODUCT_UNAVAILABLE`, `STORE_CLOSED`, `INSUFFICIENT_STOCK` |
 | 429 | `THROTTLED` (`details.wait_seconds`) |
 | 500 | `INTERNAL_ERROR` |
 
