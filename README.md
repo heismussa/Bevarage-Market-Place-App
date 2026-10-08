@@ -104,6 +104,14 @@ The full endpoint list, with examples, is in the API docs. A short map by area:
 
 The roadmap and business rules for each stage are in [`docs/BACKEND_PLAN.md`](docs/BACKEND_PLAN.md).
 
+Frontend developers start with [`docs/FRONTEND_HANDOFF.md`](docs/FRONTEND_HANDOFF.md). The OpenAPI contract is committed as [`docs/openapi.yaml`](docs/openapi.yaml). Regenerate it after any API change:
+
+```bash
+docker compose exec backend python manage.py spectacular --file /app/openapi.yaml --validate --fail-on-warn
+```
+
+Then move `backend/openapi.yaml` to `docs/openapi.yaml`. Only `backend/` is mounted in the container.
+
 Phone numbers are stored as `+255` followed by 9 digits, for example `+255712345678`.
 
 ## Tests

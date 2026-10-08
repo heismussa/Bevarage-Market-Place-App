@@ -15,7 +15,7 @@ describes the API and business rules built on top of it.
 | 4 | Store order management and dashboard | Done |
 | 5 | Payments | Done |
 | 6 | Notifications (in-app only) | Done |
-| 7 | Frontend handoff | Not started |
+| 7 | Frontend handoff | Done |
 
 ## Global rules (apply to every stage)
 
