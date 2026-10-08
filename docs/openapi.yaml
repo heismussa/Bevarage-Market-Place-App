@@ -3806,8 +3806,9 @@ paths:
     get:
       operationId: v1_owner_stores_analytics_retrieve
       description: ?from=YYYY-MM-DD&to=YYYY-MM-DD, local days, both inclusive. Defaults
-        to the last 30 days ending today; at most 366 days. Sales and top products
-        count COMPLETED orders placed in the range.
+        to the last 30 days ending today; at most 366 days. Sales, top products and
+        payment_methods count COMPLETED orders placed in the range. compared_to_previous
+        compares the range with the equally long period just before it.
       summary: Store analytics for a date range
       parameters:
       - in: query
@@ -3864,6 +3865,36 @@ paths:
                       product_name: Coca-Cola 500ml
                       quantity_sold: 9
                       sales: '13500.00'
+                    payment_methods:
+                    - payment_method: MPESA
+                      orders: 12
+                      sales: '58500.00'
+                      orders_percent: '48.0'
+                    - payment_method: TIGO_PESA
+                      orders: 3
+                      sales: '18000.00'
+                      orders_percent: '12.0'
+                    - payment_method: AIRTEL_MONEY
+                      orders: 0
+                      sales: '0.00'
+                      orders_percent: '0.0'
+                    - payment_method: CASH
+                      orders: 10
+                      sales: '45000.00'
+                      orders_percent: '40.0'
+                    compared_to_previous:
+                      current:
+                        date_from: '2026-10-07'
+                        date_to: '2026-10-08'
+                        total_orders: 5
+                        total_sales: '15500.00'
+                      previous:
+                        date_from: '2026-10-05'
+                        date_to: '2026-10-06'
+                        total_orders: 4
+                        total_sales: '12400.00'
+                      orders_change_percent: '25.0'
+                      sales_change_percent: '25.0'
           description: ''
         '400':
           content:
@@ -3926,8 +3957,11 @@ paths:
   /api/v1/owner/stores/{id}/dashboard/:
     get:
       operationId: v1_owner_stores_dashboard_retrieve
-      description: total_sales sums total_amount of COMPLETED orders. sales_last_7_days
-        has one row per local day ending today, including days without sales.
+      description: total_orders and total_sales are all time; total_sales sums total_amount
+        of COMPLETED orders. sales_last_7_days has one row per local day ending today,
+        including days without sales. last_7_days_vs_previous compares those 7 days
+        with the 7 days before (for '+12% vs last week'). payment_methods_last_7_days
+        splits the COMPLETED orders of those 7 days by payment method.
       summary: Store dashboard
       parameters:
       - in: path
@@ -3971,6 +4005,36 @@ paths:
                     - date: '2026-10-08'
                       orders: 0
                       sales: '0.00'
+                    last_7_days_vs_previous:
+                      current:
+                        date_from: '2026-10-02'
+                        date_to: '2026-10-08'
+                        total_orders: 27
+                        total_sales: '121500.00'
+                      previous:
+                        date_from: '2026-09-25'
+                        date_to: '2026-10-01'
+                        total_orders: 24
+                        total_sales: '112500.00'
+                      orders_change_percent: '12.5'
+                      sales_change_percent: '8.0'
+                    payment_methods_last_7_days:
+                    - payment_method: MPESA
+                      orders: 12
+                      sales: '58500.00'
+                      orders_percent: '48.0'
+                    - payment_method: TIGO_PESA
+                      orders: 3
+                      sales: '18000.00'
+                      orders_percent: '12.0'
+                    - payment_method: AIRTEL_MONEY
+                      orders: 0
+                      sales: '0.00'
+                      orders_percent: '0.0'
+                    - payment_method: CASH
+                      orders: 10
+                      sales: '45000.00'
+                      orders_percent: '40.0'
                     recent_orders:
                     - id: 42
                       order_number: BDM-20261008-0007
@@ -4143,6 +4207,142 @@ paths:
                       total_amount: '5000.00'
                       item_count: 1
                       ordered_at: '2026-10-08T13:05:00+03:00'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                VALIDATIONERROR:
+                  value:
+                    error:
+                      code: VALIDATION_ERROR
+                      message: This field is required.
+                      details:
+                        field:
+                        - This field is required.
+                  summary: VALIDATION_ERROR
+          description: Invalid input
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                NOTAUTHENTICATED:
+                  value:
+                    error:
+                      code: NOT_AUTHENTICATED
+                      message: Authentication credentials were not provided.
+                      details: {}
+                  summary: NOT_AUTHENTICATED
+          description: Missing or invalid credentials
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                PERMISSIONDENIED:
+                  value:
+                    error:
+                      code: PERMISSION_DENIED
+                      message: You do not have permission to perform this action.
+                      details: {}
+                  summary: PERMISSION_DENIED
+          description: Role not allowed
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                NOTFOUND:
+                  value:
+                    error:
+                      code: NOT_FOUND
+                      message: No object matches the given query.
+                      details: {}
+                  summary: NOT_FOUND
+          description: Not found or not visible to this user
+  /api/v1/owner/stores/{id}/orders/export/:
+    get:
+      operationId: v1_owner_stores_orders_export_retrieve
+      description: 'Same filters, search and ordering as the orders list, without
+        pagination. Returns a UTF-8 CSV file (opens in Excel) with Content-Disposition:
+        attachment. Times are local. At most 5000 orders; narrow the dates if you
+        get VALIDATION_ERROR. Do not send Accept: text/csv; send no Accept header
+        or */*.'
+      summary: Export my store's orders as CSV
+      parameters:
+      - in: query
+        name: date_from
+        schema:
+          type: string
+          format: date
+        description: Local day, inclusive.
+      - in: query
+        name: date_to
+        schema:
+          type: string
+          format: date
+        description: Local day, inclusive.
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: ordering
+        schema:
+          type: string
+        description: ordered_at, -ordered_at, total_amount or -total_amount.
+      - in: query
+        name: payment_status
+        schema:
+          type: string
+          enum:
+          - CANCELLED
+          - FAILED
+          - PENDING
+          - PROCESSING
+          - REFUNDED
+          - SUCCESS
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Order number or customer name.
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - ACCEPTED
+          - ASSIGNED
+          - CANCELLED
+          - COMPLETED
+          - OUT_FOR_DELIVERY
+          - PENDING
+          - PREPARING
+          - READY
+          - REJECTED
+      tags:
+      - owner-orders
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            text/csv:
+              schema:
+                type: string
+              examples:
+                CSV:
+                  value: "order_number,ordered_at,order_status,payment_status,payment_method,customer_name,customer_phone,item_count,subtotal_amount,delivery_fee,total_amount,delivery_address\r\nBDM-20261008-0007,2026-10-08
+                    13:05,COMPLETED,SUCCESS,MPESA,Asha Juma,+255712345678,2,4500.00,1500.00,6000.00,\"Plot
+                    12, Haile Selassie Road\"\r\n"
           description: ''
         '400':
           content:
@@ -4625,6 +4825,85 @@ paths:
                       details: {}
                   summary: NOT_FOUND
           description: Not found or not visible to this user
+  /api/v1/products/popular/:
+    get:
+      operationId: v1_products_popular_list
+      description: Best sellers by units sold in COMPLETED orders over the last 30
+        days. Only products a customer can buy now (OPEN store, AVAILABLE, in stock);
+        products with no sales are left out, so the list can be empty. ?store= limits
+        it to one store, ?category= to one category.
+      summary: Popular products
+      parameters:
+      - in: query
+        name: category
+        schema:
+          type: number
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: store
+        schema:
+          type: number
+      tags:
+      - catalog
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPopularProductList'
+              examples:
+                Product:
+                  value:
+                    count: 123
+                    next: http://api.example.org/accounts/?page=4
+                    previous: http://api.example.org/accounts/?page=2
+                    results:
+                    - id: 1
+                      store: 1
+                      store_name: ABC Drinks
+                      category:
+                        id: 1
+                        name: Soda
+                        slug: soda
+                      name: Coca-Cola 500ml
+                      description: Coca-Cola 500ml
+                      image: http://localhost:8000/media/products/coca-cola.png
+                      unit: BOTTLE
+                      price: '1500.00'
+                      stock_quantity: 120
+                      availability_status: AVAILABLE
+                      in_stock: true
+                      sold_quantity: 42
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                VALIDATIONERROR:
+                  value:
+                    error:
+                      code: VALIDATION_ERROR
+                      message: This field is required.
+                      details:
+                        field:
+                        - This field is required.
+                  summary: VALIDATION_ERROR
+          description: Invalid input
   /api/v1/stores/:
     get:
       operationId: v1_stores_list
@@ -5087,11 +5366,21 @@ components:
           items:
             $ref: '#/components/schemas/TopProduct'
           description: Top 10 by quantity sold.
+        payment_methods:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentMethodShare'
+        compared_to_previous:
+          allOf:
+          - $ref: '#/components/schemas/PeriodComparison'
+          description: The range against the equally long period just before it.
       required:
+      - compared_to_previous
       - completed_orders
       - daily_sales
       - date_from
       - date_to
+      - payment_methods
       - pending_orders
       - top_products
       - total_orders
@@ -5368,14 +5657,24 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DailySales'
+        last_7_days_vs_previous:
+          allOf:
+          - $ref: '#/components/schemas/PeriodComparison'
+          description: The last 7 days (ending today) against the 7 days before.
+        payment_methods_last_7_days:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentMethodShare'
         recent_orders:
           type: array
           items:
             $ref: '#/components/schemas/OwnerOrderList'
           description: Newest 5 orders.
       required:
+      - last_7_days_vs_previous
       - low_stock_count
       - low_stock_items
+      - payment_methods_last_7_days
       - pending_orders
       - recent_orders
       - sales_last_7_days
@@ -6414,6 +6713,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/OwnerStore'
+    PaginatedPopularProductList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PopularProduct'
     PaginatedPublicProductList:
       type: object
       required:
@@ -6754,6 +7076,28 @@ components:
         * `CARD` - Card
         * `BANK` - Bank
         * `CASH` - Cash
+    PaymentMethodShare:
+      type: object
+      properties:
+        payment_method:
+          $ref: '#/components/schemas/PaymentMethodEnum'
+        orders:
+          type: integer
+          description: COMPLETED orders paid with this method.
+        sales:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        orders_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,1})?$
+          description: Share of COMPLETED orders, 0.0 to 100.0.
+      required:
+      - orders
+      - orders_percent
+      - payment_method
+      - sales
     PaymentStatusEnum:
       enum:
       - PENDING
@@ -6803,6 +7147,120 @@ components:
       - payer_phone
       - payment_method
       - payment_status
+    PeriodComparison:
+      type: object
+      properties:
+        current:
+          $ref: '#/components/schemas/PeriodTotals'
+        previous:
+          allOf:
+          - $ref: '#/components/schemas/PeriodTotals'
+          description: The equally long period just before current.
+        orders_change_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,7}(?:\.\d{0,1})?$
+          nullable: true
+          description: e.g. 12.5 means +12.5%. null when the previous period had no
+            orders.
+        sales_change_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,7}(?:\.\d{0,1})?$
+          nullable: true
+          description: null when the previous period had no sales.
+      required:
+      - current
+      - orders_change_percent
+      - previous
+      - sales_change_percent
+    PeriodTotals:
+      type: object
+      properties:
+        date_from:
+          type: string
+          format: date
+        date_to:
+          type: string
+          format: date
+        total_orders:
+          type: integer
+          description: Orders placed (visible to the owner).
+        total_sales:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+          description: total_amount of COMPLETED orders.
+      required:
+      - date_from
+      - date_to
+      - total_orders
+      - total_sales
+    PopularProduct:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        store:
+          type: integer
+          readOnly: true
+        store_name:
+          type: string
+          readOnly: true
+        category:
+          allOf:
+          - $ref: '#/components/schemas/CategorySummary'
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+          nullable: true
+        image:
+          type: string
+          format: uri
+          nullable: true
+          readOnly: true
+        unit:
+          allOf:
+          - $ref: '#/components/schemas/UnitEnum'
+          readOnly: true
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        stock_quantity:
+          type: integer
+          readOnly: true
+        availability_status:
+          allOf:
+          - $ref: '#/components/schemas/AvailabilityStatusEnum'
+          readOnly: true
+        in_stock:
+          type: boolean
+          readOnly: true
+        sold_quantity:
+          type: integer
+          readOnly: true
+          description: Units sold in COMPLETED orders in the last 30 days.
+      required:
+      - availability_status
+      - category
+      - description
+      - id
+      - image
+      - in_stock
+      - name
+      - price
+      - sold_quantity
+      - stock_quantity
+      - store
+      - store_name
+      - unit
     PublicProduct:
       type: object
       properties:

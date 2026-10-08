@@ -105,14 +105,14 @@ cannot tell whether it exists.
 | Health | `health/` | yes | yes | yes | yes |
 | Auth | `auth/register/`, `auth/login/`, `auth/refresh/`, `auth/password/reset/`, `auth/password/reset/confirm/` | yes | yes | yes | yes |
 | Profile | `auth/me/` (GET, PATCH), `auth/password/change/` | | yes | yes | yes |
-| Catalog (read only) | `categories/`, `stores/`, `stores/{id}/`, `stores/{store_id}/products/`, `products/{id}/` | yes | yes | yes | yes |
+| Catalog (read only) | `categories/`, `stores/`, `stores/{id}/`, `stores/{store_id}/products/`, `products/popular/`, `products/{id}/` | yes | yes | yes | yes |
 | Addresses | `addresses/`, `addresses/{id}/`, `addresses/{id}/set-default/` | | yes | | |
 | Cart | `cart/`, `cart/items/`, `cart/items/{id}/` | | yes | | |
 | Orders | `orders/`, `orders/{id}/`, `orders/{id}/cancel/` | | yes | | |
 | Payments | `orders/{id}/pay/`, `orders/{id}/payment/` | | yes | | |
 | My stores | `owner/stores/`, `owner/stores/{id}/` | | | yes | |
 | My products | `owner/stores/{store_id}/products/`, `owner/products/{id}/`, `owner/products/{id}/stock/` | | | yes | |
-| Store orders | `owner/stores/{id}/orders/`, `owner/orders/{id}/`, `owner/orders/{id}/transition/` | | | yes | |
+| Store orders | `owner/stores/{id}/orders/`, `owner/stores/{id}/orders/export/`, `owner/orders/{id}/`, `owner/orders/{id}/transition/` | | | yes | |
 | Reports | `owner/stores/{id}/dashboard/`, `owner/stores/{id}/analytics/` | | | yes | |
 | Notifications | `notifications/`, `notifications/unread-count/`, `notifications/{id}/read/`, `notifications/read-all/` | | yes | yes | yes |
 | Admin | `admin/orders/{id}/cancel/` | | | | yes |
@@ -251,11 +251,12 @@ in the real shape):
 | `stores/` | `status`, `city`, `area` (exact, any case), `category` (id), `lat` + `lng` | `store_name`, `description`, `location`, `city`, `area` | `store_name`, `delivery_fee`, `created_at`, `distance` (`store_name`) |
 | `stores/{id}/` | `lat` + `lng` (adds `distance_km`) | | |
 | `stores/{store_id}/products/` | `category` (id), `availability`, `in_stock` (true/false) | `name`, `description` | `name`, `price` (`name`) |
+| `products/popular/` | `store` (id), `category` (id) | | fixed: most sold first |
 | `addresses/` | `is_default`, `city` | `address_name`, `address_line`, `area` | `address_name`, `created_at` (default first) |
 | `orders/` | `status` | `order_number`, `store__store_name` | `ordered_at`, `total_amount` (`-ordered_at`) |
 | `owner/stores/` | | `store_name`, `city`, `area` | `store_name`, `created_at` (`store_name`) |
 | `owner/stores/{store_id}/products/` | `category`, `availability`, `low_stock` (true/false) | `name`, `description` | `name`, `price`, `stock_quantity`, `created_at` (`name`) |
-| `owner/stores/{id}/orders/` | `status`, `payment_status`, `date_from`, `date_to` | `order_number`, customer full name | `ordered_at`, `total_amount` (`-ordered_at`) |
+| `owner/stores/{id}/orders/` and `.../orders/export/` | `status`, `payment_status`, `date_from`, `date_to` | `order_number`, customer full name | `ordered_at`, `total_amount` (`-ordered_at`) |
 | `owner/stores/{id}/analytics/` | `from`, `to` (default last 30 days, max 366 days) | | |
 | `notifications/` | `is_read` | | newest first |
 
@@ -362,12 +363,19 @@ Example of a wrong password at login (`401`):
 {"error": {"code": "AUTHENTICATION_FAILED", "message": "No active account found with the given credentials", "details": {}}}
 ```
 
-#### Home (stores near me, categories)
+#### Home (stores near me, categories, popular products)
+
+`products/popular/` ranks products by units sold in COMPLETED orders over the last 30
+days. Each item is a normal product plus `sold_quantity`. It only lists products a
+customer can buy now (open store, available, in stock) and leaves out products that
+never sold, so **hide the "Popular products" section when `results` is empty** (a new
+store has no sales yet).
 
 | Need | Call |
 | --- | --- |
 | Category chips | `GET categories/` |
 | Nearby stores | `GET stores/?lat=-6.7924&lng=39.2083&ordering=distance` |
+| Popular products | `GET products/popular/?page_size=10` (add `store=` or `category=` to narrow) |
 | Stores selling a category | `GET stores/?category=1` |
 | Search | `GET stores/?search=kariakoo` |
 
@@ -722,6 +730,18 @@ take the store id.
     {"date": "2026-10-02", "orders": 0, "sales": "0.00"},
     {"date": "2026-10-08", "orders": 0, "sales": "0.00"}
   ],
+  "last_7_days_vs_previous": {
+    "current": {"date_from": "2026-10-02", "date_to": "2026-10-08", "total_orders": 27, "total_sales": "121500.00"},
+    "previous": {"date_from": "2026-09-25", "date_to": "2026-10-01", "total_orders": 24, "total_sales": "112500.00"},
+    "orders_change_percent": "12.5",
+    "sales_change_percent": "8.0"
+  },
+  "payment_methods_last_7_days": [
+    {"payment_method": "MPESA", "orders": 12, "sales": "58500.00", "orders_percent": "48.0"},
+    {"payment_method": "TIGO_PESA", "orders": 3, "sales": "18000.00", "orders_percent": "12.0"},
+    {"payment_method": "AIRTEL_MONEY", "orders": 0, "sales": "0.00", "orders_percent": "0.0"},
+    {"payment_method": "CASH", "orders": 10, "sales": "45000.00", "orders_percent": "40.0"}
+  ],
   "recent_orders": [
     {
       "id": 2,
@@ -739,8 +759,21 @@ take the store id.
 ```
 
 (`sales_last_7_days` always has 7 entries, one per day including days with no sales;
-shortened here.) Sales count only COMPLETED orders, include the delivery fee, and are
-grouped by the day the order was placed. Low-stock items are lowest first, at most 10.
+shortened here. The comparison and payment-method numbers are illustrative.) Sales
+count only COMPLETED orders, include the delivery fee, and are grouped by the day the
+order was placed. Low-stock items are lowest first, at most 10.
+
+- `total_orders` and `total_sales` at the top are **all time**. For the "Total orders"
+  and "Total sales" cards with "+12% vs last week", use `last_7_days_vs_previous`:
+  `current` is the last 7 days ending today, `previous` the 7 days before.
+- `orders_change_percent` / `sales_change_percent` are strings such as `"12.5"`
+  (show "+12.5%") or `"-8.0"` (show "-8.0%"). `null` means the previous week had
+  nothing to compare with: show "New" or hide the badge. Never divide yourself.
+- `payment_methods_last_7_days` feeds the "Payment methods" donut: COMPLETED orders of
+  those 7 days by method. All four checkout methods are always present (zeros
+  included), so the legend stays stable. `orders_percent` adds up to 100 (rounding
+  can make it 99.9 or 100.1); when there are no sales every value is `"0.0"`, so show an
+  empty state instead of the chart.
 
 #### Orders list and detail
 
@@ -748,6 +781,7 @@ grouped by the day the order was placed. Low-stock items are lowest first, at mo
 | --- | --- |
 | Incoming orders | `GET owner/stores/{id}/orders/?status=PENDING` |
 | Filters | `status`, `payment_status`, `date_from`, `date_to`, `search` |
+| Export button | `GET owner/stores/{id}/orders/export/` with the same filters (CSV file) |
 | Detail | `GET owner/orders/{id}/` |
 | Act | `POST owner/orders/{id}/transition/` `{"action": "accept"}` |
 | Reject or cancel | `{"action": "reject", "reason": "Out of crates"}` (reason required) |
@@ -771,6 +805,26 @@ the owner (for a new order: `["accept", "reject"]`). The transition call returns
 updated detail. Mobile-money orders appear here **only after they are paid**; cash
 orders appear immediately. Poll the PENDING list every 15 to 30 seconds, or refresh
 when an `ORDER_RECEIVED` notification arrives.
+
+**Export.** The export returns every matching order (no pagination) as a UTF-8 CSV
+that opens in Excel, with columns `order_number, ordered_at, order_status,
+payment_status, payment_method, customer_name, customer_phone, item_count,
+subtotal_amount, delivery_fee, total_amount, delivery_address` and local times
+(`2026-10-08 13:05`). It needs the Bearer token, so a plain link will not work: fetch
+it, then save the blob.
+
+```ts
+const res = await fetch(`${API}/owner/stores/${storeId}/orders/export/?${filters}`, {
+  headers: { Authorization: `Bearer ${access}` },
+});
+if (!res.ok) throw await res.json(); // errors are the usual JSON
+const url = URL.createObjectURL(await res.blob());
+Object.assign(document.createElement("a"), { href: url, download: "orders.csv" }).click();
+URL.revokeObjectURL(url);
+```
+
+Do not send `Accept: text/csv` (you would get `406`). More than 5000 matching orders is
+`400 VALIDATION_ERROR` on `date_from`: ask the owner for a shorter date range.
 
 Wrong action for the current state (`409`):
 
@@ -846,13 +900,28 @@ defaults to the last 30 days; at most 366 days):
   ],
   "top_products": [
     {"product_id": 1, "product_name": "Coca-Cola 500ml", "quantity_sold": 24, "sales": "36000.00"}
-  ]
+  ],
+  "payment_methods": [
+    {"payment_method": "MPESA", "orders": 0, "sales": "0.00", "orders_percent": "0.0"},
+    {"payment_method": "TIGO_PESA", "orders": 0, "sales": "0.00", "orders_percent": "0.0"},
+    {"payment_method": "AIRTEL_MONEY", "orders": 0, "sales": "0.00", "orders_percent": "0.0"},
+    {"payment_method": "CASH", "orders": 0, "sales": "0.00", "orders_percent": "0.0"}
+  ],
+  "compared_to_previous": {
+    "current": {"date_from": "2026-10-01", "date_to": "2026-10-08", "total_orders": 2, "total_sales": "0.00"},
+    "previous": {"date_from": "2026-09-23", "date_to": "2026-09-30", "total_orders": 0, "total_sales": "0.00"},
+    "orders_change_percent": null,
+    "sales_change_percent": null
+  }
 }
 ```
 
 (`daily_sales` has one entry per day in the range, shortened here. The `top_products`
 entry is illustrative: the capture had no completed orders yet.) Top products are the
-10 best by quantity, from COMPLETED orders.
+10 best by quantity, from COMPLETED orders. `payment_methods` and
+`compared_to_previous` work like the dashboard fields, for the chosen range: the
+previous period has the same number of days and ends the day before `date_from`. For
+"This week vs last week", send this week's Monday to today.
 
 #### Store profile
 
@@ -898,8 +967,8 @@ Same endpoints as the customer. Owners receive `ORDER_RECEIVED` ("New order …"
 
 | Feature you may see in a mockup | Status today | What the frontend should do |
 | --- | --- | --- |
-| Store ratings, reviews, stars | No data or endpoint | Hide them. Do not show fake ratings. |
-| Opening hours, "opens at 8:00" | No hours; the owner toggles `OPEN`/`CLOSED` | Show "Open now" / "Closed" from `status`. |
+| Store ratings, reviews, stars | Not in this version (planned for a later one) | Hide them. Do not show fake ratings. |
+| Opening hours, "opens at 8:00" | Not in this version; the owner toggles `OPEN`/`CLOSED` | Show "Open now" / "Closed" from `status`. |
 | Global product search across all stores | Products are listed per store only | Search stores (`stores/?search=`), or filter stores by `category`. |
 | Separate inventory module, stock history, suppliers | Stock is one number on the product | Use the products list, the stock endpoint and `?low_stock=true`. |
 | Delivery or driver tracking, map with a moving rider, ETA | No drivers or delivery tracking; `ASSIGNED` and `OUT_FOR_DELIVERY` never happen | Show the status timeline; after READY the store completes the order itself. |
@@ -910,17 +979,13 @@ Same endpoints as the customer. Owners receive `ORDER_RECEIVED` ("New order …"
 | Ordering from several stores at once | A cart holds one store | Handle `CART_STORE_CONFLICT` with the "start a new cart" dialog. |
 | Promo codes, discounts, loyalty points, tips | Not supported | Hide. |
 | Scheduled delivery | Not supported | Hide. |
-| Favourites or re-order | Not supported | Hide, or re-add items to the cart from an old order's `items` one by one. |
+| Favourites (heart icon) or re-order | Not in this version (planned for a later one) | Hide the heart. For re-order, re-add items to the cart from an old order's `items` one by one, or hide. |
 | Phone verification at sign-up (OTP) | Not supported; only password reset uses an SMS code | Hide. |
 | Real SMS delivery of reset codes | Console backend only: codes appear in the backend log | Build the screens; in development read the code from `docker compose logs backend`. |
 | Logout from all devices | No dedicated button; changing the password logs out every other device | Delete local tokens on logout. |
-| "Popular products" across stores on the home screen | Products are listed per store; no popularity endpoint for customers | Show the stores list on home; inside a store sort products by `name` or `price`. |
 | Location chip such as "Delivers to Arusha" | No delivery-zone check; stores have `city` and `area`, and distance comes from `lat`/`lng` | Show the device location or a chosen city; send `lat`/`lng` (and optionally `city`) to `stores/`. |
 | Generic "Mobile Money" option | The customer must choose MPESA, TIGO_PESA or AIRTEL_MONEY | Show the three providers as separate options. |
-| Trend percentages such as "+12% vs last week" | The dashboard has no comparison | Hide, or call `owner/analytics/` twice (this week and last week) and compute it. |
-| "Payment methods" donut chart | No breakdown by payment method | Hide. |
-| Store settings toggles (accept new orders, notifications, low-stock alerts) | Only `status` OPEN/CLOSED exists | Map "Accept new orders" to OPEN/CLOSED; hide the other toggles. |
-| Orders "Export" button | No export endpoint | Build a CSV in the browser from the loaded pages, or hide. |
+| Store settings toggles (notifications, low-stock alerts) | Not in this version (needs database changes) | Map "Accept new orders" to OPEN/CLOSED; hide the other toggles. |
 | One search bar for orders, products and customers | Each list has its own `search` | Search the list on the current page only. |
 | Delete account | Not supported | Hide. |
 | Category management, store approval, admin screens | Django admin only (`/admin/`); the API has just `admin/orders/{id}/cancel/` | Do not build admin screens yet. |

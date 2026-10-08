@@ -93,13 +93,13 @@ The full endpoint list, with examples, is in the API docs. A short map by area:
 
 | Area | Endpoints | Who |
 | --- | --- | --- |
-| Catalog | `categories/`, `stores/`, `stores/{id}/`, `stores/{id}/products/`, `products/{id}/` | Anyone |
+| Catalog | `categories/`, `stores/`, `stores/{id}/`, `stores/{id}/products/`, `products/popular/`, `products/{id}/` | Anyone |
 | Owner stores | `owner/stores/`, `owner/stores/{id}/` | Store owner |
 | Owner products | `owner/stores/{store_id}/products/`, `owner/products/{id}/`, `owner/products/{id}/stock/` | Store owner |
 | Addresses | `addresses/`, `addresses/{id}/`, `addresses/{id}/set-default/` | Customer |
 | Cart | `cart/`, `cart/items/`, `cart/items/{id}/` | Customer |
 | Orders | `orders/`, `orders/{id}/`, `orders/{id}/cancel/` | Customer |
-| Owner orders | `owner/stores/{id}/orders/`, `owner/orders/{id}/`, `owner/orders/{id}/transition/` | Store owner |
+| Owner orders | `owner/stores/{id}/orders/`, `owner/stores/{id}/orders/export/` (CSV), `owner/orders/{id}/`, `owner/orders/{id}/transition/` | Store owner |
 | Owner dashboard | `owner/stores/{id}/dashboard/`, `owner/stores/{id}/analytics/` | Store owner |
 | Admin orders | `admin/orders/{id}/cancel/` | Admin |
 | Payments | `orders/{id}/pay/`, `orders/{id}/payment/` | Customer |

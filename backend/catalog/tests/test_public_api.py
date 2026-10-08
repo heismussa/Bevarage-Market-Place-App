@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django.utils import timezone
@@ -7,7 +8,15 @@ from rest_framework.test import APIClient
 from catalog.models import AvailabilityStatus, CategoryStatus
 from core.errors import ErrorCode
 from core.testing.api import ApiTestCase
-from core.testing.factories import CategoryFactory, ProductFactory, StoreFactory
+from core.testing.factories import (
+    CategoryFactory,
+    OrderFactory,
+    OrderItemFactory,
+    ProductFactory,
+    StoreFactory,
+)
+from orders.models import Order, OrderStatus
+from stores.models import StoreStatus
 
 
 def names(response):
@@ -105,6 +114,72 @@ class StoreProductListTests(ApiTestCase):
             response = self.client.get(self.url)
 
         self.assertEqual(response.data["count"], 11)
+
+
+class PopularProductTests(ApiTestCase):
+    url = "/api/v1/products/popular/"
+
+    def sell(self, product, quantity, order_status=OrderStatus.COMPLETED, days_ago=0):
+        order = OrderFactory(store=product.store, order_status=order_status)
+        if days_ago:
+            Order.objects.filter(pk=order.pk).update(
+                ordered_at=timezone.now() - timedelta(days=days_ago)
+            )
+        OrderItemFactory(order=order, product=product, quantity=quantity)
+
+    def popular(self, query=""):
+        response = APIClient().get(self.url + query)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        return [(row["name"], row["sold_quantity"]) for row in response.data["results"]]
+
+    def test_best_sellers_first_and_unsold_left_out(self):
+        store = StoreFactory()
+        cola = ProductFactory(store=store, name="Cola")
+        juice = ProductFactory(store=store, name="Juice")
+        ProductFactory(store=store, name="Water")
+        self.sell(cola, 2)
+        self.sell(cola, 1)
+        self.sell(juice, 5)
+        self.sell(cola, 50, order_status=OrderStatus.PENDING)
+        self.sell(cola, 50, order_status=OrderStatus.CANCELLED)
+        self.sell(cola, 50, days_ago=31)
+
+        self.assertEqual(self.popular(), [("Juice", 5), ("Cola", 3)])
+
+    def test_only_products_customers_can_buy_now(self):
+        hidden = (
+            ProductFactory(store=StoreFactory(status=StoreStatus.CLOSED)),
+            ProductFactory(store=StoreFactory(is_active=False)),
+            ProductFactory(stock_quantity=0, availability_status=AvailabilityStatus.OUT_OF_STOCK),
+            ProductFactory(availability_status=AvailabilityStatus.UNAVAILABLE),
+            ProductFactory(deleted_at=timezone.now()),
+            ProductFactory(category=CategoryFactory(status=CategoryStatus.INACTIVE)),
+        )
+        for product in hidden:
+            self.sell(product, 3)
+        self.sell(ProductFactory(name="Visible"), 1)
+
+        self.assertEqual(self.popular(), [("Visible", 1)])
+
+    def test_store_and_category_filters(self):
+        soda = CategoryFactory(name="Soda")
+        cola = ProductFactory(name="Cola", category=soda)
+        lager = ProductFactory(name="Lager")
+        self.sell(cola, 1)
+        self.sell(lager, 2)
+
+        self.assertEqual(self.popular(f"?store={cola.store_id}"), [("Cola", 1)])
+        self.assertEqual(self.popular(f"?category={soda.pk}"), [("Cola", 1)])
+
+    def test_query_count_does_not_grow_with_rows(self):
+        for _ in range(6):
+            self.sell(ProductFactory(), 1)
+
+        # count, select (with store and category joined)
+        with self.assertNumQueries(2):
+            response = APIClient().get(self.url)
+
+        self.assertEqual(response.data["count"], 6)
 
 
 class ProductDetailTests(ApiTestCase):

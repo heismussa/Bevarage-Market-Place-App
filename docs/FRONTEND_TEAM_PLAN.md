@@ -13,7 +13,10 @@ The backend is finished and is the single source of truth. Read
 
 ---
 
-## 1. Recommended stack
+## 1. Stack (confirmed)
+
+Expo (React Native) for the customer app and React for the owner dashboard. Both talk to
+the same Django API; there is no separate backend per app.
 
 | Part | Choice | Why |
 | --- | --- | --- |
@@ -132,7 +135,8 @@ Owns the shared code that the other two depend on, so A starts first.
 **Screens:**
 
 - Home: location chip, search bar (searches stores), category chips, nearby stores
-  sorted by distance, open/closed badge.
+  sorted by distance, open/closed badge, "Popular products" row from
+  `products/popular/` (hidden when empty).
 - Store page: header, product search, category filter, product grid, add to cart.
 - Product detail: image, price, stock, quantity stepper, Add to cart.
 - Cart: lines, quantity changes, remove, `warnings`, the "start a new cart" dialog for
@@ -152,20 +156,21 @@ Owns the shared code that the other two depend on, so A starts first.
 - Layout: sidebar (Dashboard, Orders, Products, Low stock, Sales Analytics, Store
   Profile), store switcher if the owner has more than one store, responsive down to
   tablet.
-- Dashboard (`owner/stores/{id}/dashboard/`): total orders, total sales, pending count,
-  7-day sales chart, recent orders, low-stock card. For "today" figures or top products,
-  call `owner/stores/{id}/analytics/` with today's or this week's dates. Poll PENDING
-  orders every 15-30 s.
-- Orders: tabs or filter by status, search, date range, pagination, client-side CSV
-  export of the loaded rows.
+- Dashboard (`owner/stores/{id}/dashboard/`): orders and sales cards with
+  "+12% vs last week" from `last_7_days_vs_previous`, pending count, 7-day sales chart,
+  payment methods donut from `payment_methods_last_7_days`, recent orders, low-stock
+  card. For top products, call `owner/stores/{id}/analytics/`. Poll PENDING orders
+  every 15-30 s.
+- Orders: tabs or filter by status, search, date range, pagination, and an Export button
+  that downloads `owner/stores/{id}/orders/export/` with the same filters.
 - Order detail: customer, address, items, totals, payment status, history timeline,
   action buttons only from `allowed_actions`, reason dialog for reject and cancel.
 - Products: table with image, price, stock, availability, search, category filter,
   `?low_stock=true` view (the "Inventory" / "Low stock alerts" page).
 - Add/Edit product: form, image upload under 2 MB, category, price, stock,
   low-stock threshold, availability; quick stock update; soft delete.
-- Sales analytics: date range picker, totals, daily sales line, top products.
-  "This week vs last week" = two analytics calls.
+- Sales analytics: date range picker, totals, daily sales line, top products, payment
+  methods, and "vs previous period" from `compared_to_previous`.
 
 ### Shared ownership rules
 
@@ -227,25 +232,32 @@ Have a 15-minute check-in every day and a demo every Friday on the seeded data.
 5. Owner accepts, prepares, marks ready, completes. The customer's tracking screen
    follows each step and the bell shows each update.
 6. Stock drops; a low-stock alert appears when a product reaches its threshold.
-7. Dashboard and analytics show the sale.
+7. Dashboard and analytics show the sale, the "vs last week" badge and the payment
+   methods chart; the owner exports the orders to CSV. The sold products appear under
+   "Popular products" on the customer's Home.
 8. Customer uses Forgot password; the code comes from the backend log.
 
 ---
 
-## 8. Mockup items the backend does not provide yet
+## 8. Mockup items: what is built and what is hidden
 
-Build the screens without these, or as described in section 5 of the handoff. The
-backend can add the items marked "no schema change" quickly on request.
+**Built in the backend for this version:**
 
-| Mockup item | Today | Backend option |
-| --- | --- | --- |
-| Store rating "4.5 (120)" | Hide | Needs new tables (schema change) |
-| Favourite heart | Hide | Needs a new table (schema change) |
-| Opening hours | Show OPEN/CLOSED | Needs new columns (schema change) |
-| Card payment | Hide | Needs a card gateway |
-| "Popular products" on home | Show stores | Public top-products endpoint (no schema change) |
-| "+12% vs last week" | Compute from two analytics calls, or hide | Comparison in the dashboard response (no schema change) |
-| Payment methods donut chart | Hide | Breakdown by method in analytics (no schema change) |
-| Orders Export | Client-side CSV | CSV endpoint (no schema change) |
-| Notifications / low-stock toggles in Settings | Hide | Needs new columns (schema change) |
-| One search for orders, products, customers | Per-page search | Combined search endpoint (no schema change) |
+| Mockup item | Endpoint and field |
+| --- | --- |
+| "Popular products" on home | `GET products/popular/` |
+| "+12% vs last week" on dashboard cards | `dashboard/` field `last_7_days_vs_previous` |
+| Payment methods donut chart | `dashboard/` field `payment_methods_last_7_days`; `analytics/` field `payment_methods` |
+| "This week vs last week" on analytics | `analytics/` field `compared_to_previous` |
+| Orders Export button | `GET owner/stores/{id}/orders/export/` (CSV) |
+
+**Hidden in this version** (they need database changes; planned for a later version):
+
+| Mockup item | What to show instead |
+| --- | --- |
+| Store rating "4.5 (120)" | Nothing |
+| Favourite heart | Nothing |
+| Opening hours | "Open now" / "Closed" from `status` |
+| Notifications / low-stock switches in Settings | Only "Accept new orders" (OPEN / CLOSED) |
+| Card payment | Cash, M-Pesa, Tigo Pesa, Airtel Money |
+| One search for orders, products, customers | Search inside the current page's list |

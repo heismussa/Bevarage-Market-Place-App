@@ -30,7 +30,7 @@
 <body>
 
 <h1>BeverageMart Frontend Task Breakdown</h1>
-<p class="sub">Three developers &middot; Customer mobile app + Store owner dashboard &middot; 5 weeks &middot; Backend API v1</p>
+<p class="sub">Three developers &middot; Customer app (Expo, React Native) + Store owner dashboard (React) &middot; one shared Django API &middot; 5 weeks</p>
 
 <div class="box">
 <b>How to read this document.</b> Every task is small (a quarter of a day to two days).
@@ -43,8 +43,8 @@ Read <code>docs/FRONTEND_HANDOFF.md</code> before starting; it has every endpoin
 <table>
   <tr><th>Who</th><th>Owns</th><th>Total size</th></tr>
   <tr><td><span class="person a">Developer A</span></td><td>Shared foundation, sign in / sign up / passwords, profile, addresses, notifications (both apps), store profile</td><td>about 18 days</td></tr>
-  <tr><td><span class="person b">Developer B</span></td><td>Customer shopping: home, store, product, cart, checkout, payment, order tracking, my orders</td><td>about 16 days</td></tr>
-  <tr><td><span class="person c">Developer C</span></td><td>Owner dashboard: layout, dashboard, orders, products, low stock, analytics</td><td>about 15 days</td></tr>
+  <tr><td><span class="person b">Developer B</span></td><td>Customer shopping: home, store, product, cart, checkout, payment, order tracking, my orders</td><td>about 16.5 days</td></tr>
+  <tr><td><span class="person c">Developer C</span></td><td>Owner dashboard: layout, dashboard, orders, products, low stock, analytics, export</td><td>about 15.5 days</td></tr>
 </table>
 
 <h2>Step 0: Everyone, day 1 (before any task)</h2>
@@ -130,6 +130,7 @@ Read <code>docs/FRONTEND_HANDOFF.md</code> before starting; it has every endpoin
   <tr><td class="id">B-03</td><td>Home: ask for location, show the location chip, list stores near the user (<code>stores/?lat=&amp;lng=&amp;ordering=distance</code>); the chip can also filter by <code>city</code>.</td><td>Distance shows on each card.</td><td class="d">1</td><td class="dep">B-02, A-06</td></tr>
   <tr><td class="id">B-04</td><td>Home: search bar (searches stores) and category chips (<code>categories/</code>, <code>stores/?category=</code>).</td><td>Filtering changes the list.</td><td class="d">0.5</td><td class="dep">B-03</td></tr>
   <tr><td class="id">B-05</td><td>Home: infinite scroll, pull to refresh, "Open now" / "Closed" badge.</td><td>Works with many stores.</td><td class="d">0.5</td><td class="dep">B-03</td></tr>
+  <tr><td class="id">B-23</td><td>Home: "Popular products" row (<code>products/popular/?page_size=10</code>) showing image, name, price and an add button. Hide the whole row when the list is empty.</td><td>Products sold in the demo appear, best seller first.</td><td class="d">0.5</td><td class="dep">B-03</td></tr>
   <tr><td class="id">B-06</td><td>Store page header: logo, name, open / closed, delivery fee, distance (<code>stores/{id}/</code>).</td><td>Matches the mockup.</td><td class="d">0.5</td><td class="dep">B-03</td></tr>
   <tr><td class="id">B-07</td><td>Store products grid with search, category filter and infinite scroll (<code>stores/{id}/products/</code>).</td><td>Search finds "Coca".</td><td class="d">1</td><td class="dep">B-06</td></tr>
   <tr><td class="id">B-08</td><td>Product detail: image, price, stock, availability, quantity stepper (<code>products/{id}/</code>).</td><td>Out-of-stock product cannot be added.</td><td class="d">0.5</td><td class="dep">B-07</td></tr>
@@ -174,9 +175,10 @@ Read <code>docs/FRONTEND_HANDOFF.md</code> before starting; it has every endpoin
 <h3>C2. Dashboard (week 1 to 2)</h3>
 <table>
   <tr><th>ID</th><th>Task</th><th>Done when</th><th>Days</th><th>Waits for</th></tr>
-  <tr><td class="id">C-04</td><td>Number cards: total orders, total sales, pending orders, low-stock count (<code>owner/stores/{id}/dashboard/</code>).</td><td>Numbers match the API.</td><td class="d">0.5</td><td class="dep">C-03</td></tr>
+  <tr><td class="id">C-04</td><td>Number cards (<code>owner/stores/{id}/dashboard/</code>): orders and sales of the last 7 days from <code>last_7_days_vs_previous.current</code> with a "+12.5% vs last week" badge from <code>orders_change_percent</code> / <code>sales_change_percent</code> (green up, red down, "New" when <code>null</code>); pending orders; low-stock count.</td><td>Numbers and badges match the API.</td><td class="d">0.5</td><td class="dep">C-03</td></tr>
   <tr><td class="id">C-05</td><td>Sales chart for the last 7 days (Recharts, from <code>sales_last_7_days</code>).</td><td>Matches the mockup.</td><td class="d">0.5</td><td class="dep">C-04</td></tr>
   <tr><td class="id">C-06</td><td>Recent orders table and low-stock list on the dashboard.</td><td>Click opens order / product.</td><td class="d">0.5</td><td class="dep">C-04</td></tr>
+  <tr><td class="id">C-22</td><td>"Payment methods" donut chart from <code>payment_methods_last_7_days</code> (labels M-Pesa, Tigo Pesa, Airtel Money, Cash; percentages from <code>orders_percent</code>). Empty state when all are 0. Reuse the component on the analytics page with <code>payment_methods</code>.</td><td>Matches the mockup on both pages.</td><td class="d">0.5</td><td class="dep">C-04</td></tr>
   <tr><td class="id">C-07</td><td>Refresh pending orders every 15 to 30 s; highlight new ones.</td><td>New customer order appears without reload.</td><td class="d">0.5</td><td class="dep">C-04</td></tr>
 </table>
 
@@ -204,8 +206,8 @@ Read <code>docs/FRONTEND_HANDOFF.md</code> before starting; it has every endpoin
   <tr><th>ID</th><th>Task</th><th>Done when</th><th>Days</th><th>Waits for</th></tr>
   <tr><td class="id">C-17</td><td>Analytics page: date range picker and total cards (<code>owner/stores/{id}/analytics/</code>).</td><td>Changing dates updates the cards.</td><td class="d">0.5</td><td class="dep">C-02</td></tr>
   <tr><td class="id">C-18</td><td>Daily sales line chart and top products bar chart.</td><td>Matches the mockup.</td><td class="d">1</td><td class="dep">C-17</td></tr>
-  <tr><td class="id">C-19</td><td>"This week vs last week": call analytics twice and show the difference.</td><td>Percentage shows with up / down arrow.</td><td class="d">0.5</td><td class="dep">C-17</td></tr>
-  <tr><td class="id">C-20</td><td>Orders "Export" button: CSV of the loaded rows, made in the browser.</td><td>File opens in Excel.</td><td class="d">0.5</td><td class="dep">C-08</td></tr>
+  <tr><td class="id">C-19</td><td>"vs previous period" on analytics cards from <code>compared_to_previous</code>. For "This week vs last week", send Monday to today as the range.</td><td>Percentage shows with up / down arrow.</td><td class="d">0.25</td><td class="dep">C-17</td></tr>
+  <tr><td class="id">C-20</td><td>Orders "Export" button: fetch <code>owner/stores/{id}/orders/export/</code> with the current filters and the Bearer token, save the response as <code>orders.csv</code> (handoff shows the code). On <code>VALIDATION_ERROR</code> ask for a shorter date range.</td><td>File opens in Excel with the filtered orders.</td><td class="d">0.5</td><td class="dep">C-08</td></tr>
   <tr><td class="id">C-21</td><td>Light theme check on every page.</td><td>No unreadable text in either theme.</td><td class="d">0.5</td><td class="dep">A-25</td></tr>
 </table>
 
@@ -228,15 +230,16 @@ Read <code>docs/FRONTEND_HANDOFF.md</code> before starting; it has every endpoin
   <li>The owner's bell shows the new order; the pending count goes up.</li>
   <li>Owner accepts, prepares, marks ready and completes. The customer's tracking screen follows each step and the bell shows each update.</li>
   <li>Stock goes down; a low-stock alert appears when a product reaches its alert level.</li>
-  <li>Dashboard and analytics show the sale.</li>
+  <li>Dashboard and analytics show the sale, the "vs last week" badge and the payment methods chart; the owner exports the orders to CSV.</li>
+  <li>The sold products appear under "Popular products" on the customer's Home.</li>
   <li>Customer uses "Forgot password"; the code is read from the backend log.</li>
 </ol>
 
 <h2>Week-by-week view</h2>
 <table>
   <tr><th>Week</th><th><span class="person a">A</span></th><th><span class="person b">B</span></th><th><span class="person c">C</span></th></tr>
-  <tr><td>1</td><td>A-01 to A-15</td><td>B-01, B-02, B-03 to B-08 with sample JSON</td><td>C-01 to C-07 with sample JSON</td></tr>
-  <tr><td>2</td><td>A-16 to A-22, A-26, A-27</td><td>Connect B-03 to B-08; B-09 to B-11</td><td>C-04 to C-07 connected; C-08 to C-10</td></tr>
+  <tr><td>1</td><td>A-01 to A-15</td><td>B-01, B-02, B-03 to B-08 with sample JSON</td><td>C-01 to C-07, C-22 with sample JSON</td></tr>
+  <tr><td>2</td><td>A-16 to A-22, A-26, A-27</td><td>Connect B-03 to B-08 and B-23; B-09 to B-11</td><td>C-04 to C-07, C-22 connected; C-08 to C-10</td></tr>
   <tr><td>3</td><td>A-23 to A-25, A-28 to A-30</td><td>B-12 to B-17</td><td>C-11 to C-16</td></tr>
   <tr><td>4</td><td>A-31; help B and C</td><td>B-18 to B-22</td><td>C-17 to C-21</td></tr>
   <tr><td>5</td><td colspan="3">T-01 to T-05</td></tr>
@@ -264,15 +267,16 @@ Read <code>docs/FRONTEND_HANDOFF.md</code> before starting; it has every endpoin
   <li><code>npm run lint</code> and <code>npm run typecheck</code> pass; reviewed by a teammate.</li>
 </ul>
 
-<h2>Mockup items not in the backend yet</h2>
-<p>Build the screens without these until the project lead decides. Do not show fake data.</p>
+<h2>Mockup items: built or hidden</h2>
+<p><b>Built in the backend for this version:</b> popular products (B-23), "+12% vs last week" (C-04),
+payment methods chart (C-22), "this week vs last week" on analytics (C-19), orders CSV export (C-20).</p>
+<p><b>Hidden in this version</b> (they need database changes and come in a later version). Do not show fake data.</p>
 <table>
   <tr><th>Mockup item</th><th>What to do for now</th></tr>
-  <tr><td>Store rating "4.5 (120)", favourite heart, opening hours</td><td>Hide (needs database changes).</td></tr>
+  <tr><td>Store rating "4.5 (120)", favourite heart</td><td>Hide.</td></tr>
+  <tr><td>Opening hours</td><td>Show "Open now" / "Closed" from the store status.</td></tr>
+  <tr><td>Notifications / low-stock switches in settings</td><td>Hide; only "Accept new orders" (OPEN / CLOSED) works.</td></tr>
   <tr><td>Card payment</td><td>Hide; offer Cash, M-Pesa, Tigo Pesa, Airtel Money.</td></tr>
-  <tr><td>"Popular products" on Home</td><td>Show nearby stores instead.</td></tr>
-  <tr><td>Payment methods donut chart</td><td>Hide.</td></tr>
-  <tr><td>Notifications / low-stock toggles in settings</td><td>Hide; only "Accept new orders" (OPEN / CLOSED) works.</td></tr>
   <tr><td>One search for orders, products and customers</td><td>Search inside the current page's list.</td></tr>
 </table>
 
