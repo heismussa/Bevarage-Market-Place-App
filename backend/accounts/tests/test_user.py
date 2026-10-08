@@ -3,7 +3,7 @@ from django.db import IntegrityError, transaction
 from django.test import TestCase
 
 from accounts.models import Customer, StoreOwner, User, UserRole
-from accounts.tests.factories import PASSWORD
+from core.testing.factories import TEST_PASSWORD as PASSWORD
 
 
 class UserCreationTests(TestCase):
@@ -85,11 +85,10 @@ class UserCreationTests(TestCase):
             full_name="First",
             role=UserRole.CUSTOMER,
         )
-        with self.assertRaises(IntegrityError):
-            with transaction.atomic():
-                User.objects.create_user(
-                    phone="+255712345682",
-                    password=PASSWORD,
-                    full_name="Second",
-                    role=UserRole.CUSTOMER,
-                )
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            User.objects.create_user(
+                phone="+255712345682",
+                password=PASSWORD,
+                full_name="Second",
+                role=UserRole.CUSTOMER,
+            )

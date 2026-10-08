@@ -1,48 +1,41 @@
 from rest_framework import status
-from rest_framework.test import APITestCase
+from rest_framework.test import APIClient
 
-from accounts.models import Customer, StoreOwner, UserRole
-from accounts.tests.factories import PASSWORD, create_user
+from accounts.models import Customer, StoreOwner
+from core.errors import ErrorCode
+from core.testing.api import ApiTestCase
+from core.testing.factories import TEST_PASSWORD, UserFactory
 
 
-class AuthApiTests(APITestCase):
-    def test_phone_login_returns_tokens(self):
-        create_user("+255712345690", UserRole.CUSTOMER, full_name="John Mushi")
-
-        response = self.client.post(
-            "/api/v1/auth/login/",
-            {"phone": "+255712345690", "password": PASSWORD},
-            format="json",
+class AuthApiTests(ApiTestCase):
+    def login(self, phone, password=TEST_PASSWORD):
+        return self.client.post(
+            "/api/v1/auth/login/", {"phone": phone, "password": password}, format="json"
         )
+
+    def test_phone_login_returns_tokens(self):
+        user = UserFactory()
+
+        response = self.login(user.phone)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("access", response.data)
         self.assertIn("refresh", response.data)
 
     def test_wrong_password_is_rejected(self):
-        create_user("+255712345691", UserRole.CUSTOMER)
+        user = UserFactory()
 
-        response = self.client.post(
-            "/api/v1/auth/login/",
-            {"phone": "+255712345691", "password": "not-the-password"},
-            format="json",
+        self.assertError(
+            self.login(user.phone, "not-the-password"),
+            status.HTTP_401_UNAUTHORIZED,
+            ErrorCode.AUTHENTICATION_FAILED,
         )
-
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_refresh_returns_a_new_access_token(self):
-        create_user("+255712345692", UserRole.CUSTOMER)
-        login = self.client.post(
-            "/api/v1/auth/login/",
-            {"phone": "+255712345692", "password": PASSWORD},
-            format="json",
-        )
+        user = UserFactory()
+        refresh = self.login(user.phone).data["refresh"]
 
-        response = self.client.post(
-            "/api/v1/auth/refresh/",
-            {"refresh": login.data["refresh"]},
-            format="json",
-        )
+        response = self.client.post("/api/v1/auth/refresh/", {"refresh": refresh}, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("access", response.data)
@@ -54,12 +47,15 @@ class AuthApiTests(APITestCase):
                 {
                     "full_name": "Blocked Role",
                     "phone": phone,
-                    "password": PASSWORD,
+                    "password": TEST_PASSWORD,
                     "role": role,
                 },
                 format="json",
             )
-            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, role)
+            error = self.assertError(
+                response, status.HTTP_400_BAD_REQUEST, ErrorCode.VALIDATION_ERROR
+            )
+            self.assertIn("role", error["details"])
 
         self.assertEqual(Customer.objects.count(), 0)
         self.assertEqual(StoreOwner.objects.count(), 0)
@@ -70,7 +66,7 @@ class AuthApiTests(APITestCase):
             {
                 "full_name": "Amina Hassan",
                 "phone": "+255712345695",
-                "password": PASSWORD,
+                "password": TEST_PASSWORD,
                 "email": "amina@example.com",
                 "role": "CUSTOMER",
             },
@@ -94,19 +90,13 @@ class AuthApiTests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("password", response.data)
+        error = self.assertError(response, status.HTTP_400_BAD_REQUEST, ErrorCode.VALIDATION_ERROR)
+        self.assertIn("password", error["details"])
 
     def test_me_cannot_change_role_or_staff(self):
-        create_user("+255712345697", UserRole.CUSTOMER, full_name="John Mushi")
-        login = self.client.post(
-            "/api/v1/auth/login/",
-            {"phone": "+255712345697", "password": PASSWORD},
-            format="json",
-        )
-        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+        client, _customer = self.customer_client(full_name="John Mushi")
 
-        response = self.client.patch(
+        response = client.patch(
             "/api/v1/auth/me/",
             {"full_name": "Updated Name", "role": "ADMIN", "is_staff": True},
             format="json",
@@ -116,3 +106,10 @@ class AuthApiTests(APITestCase):
         self.assertEqual(response.data["full_name"], "Updated Name")
         self.assertEqual(response.data["role"], "CUSTOMER")
         self.assertFalse(response.data["is_staff"])
+
+    def test_me_requires_authentication(self):
+        self.assertError(
+            APIClient().get("/api/v1/auth/me/"),
+            status.HTTP_401_UNAUTHORIZED,
+            ErrorCode.NOT_AUTHENTICATED,
+        )

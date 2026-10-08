@@ -5,6 +5,11 @@ from rest_framework import serializers
 from accounts.models import User, UserRole
 from accounts.validators import validate_phone
 
+REGISTRATION_ROLE_CHOICES = (
+    (UserRole.CUSTOMER, UserRole.CUSTOMER.label),
+    (UserRole.STORE_OWNER, UserRole.STORE_OWNER.label),
+)
+
 
 class RegisterSerializer(serializers.Serializer):
     """Public registration. ADMIN and DRIVER are not valid choices."""
@@ -13,12 +18,7 @@ class RegisterSerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=20)
     password = serializers.CharField(write_only=True, trim_whitespace=False)
     email = serializers.EmailField(required=False, allow_null=True, allow_blank=True)
-    role = serializers.ChoiceField(
-        choices=(
-            (UserRole.CUSTOMER, UserRole.CUSTOMER.label),
-            (UserRole.STORE_OWNER, UserRole.STORE_OWNER.label),
-        )
-    )
+    role = serializers.ChoiceField(choices=REGISTRATION_ROLE_CHOICES)
 
     def validate_phone(self, value):
         validate_phone(value)

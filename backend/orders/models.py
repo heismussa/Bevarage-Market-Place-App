@@ -48,12 +48,8 @@ class Order(models.Model):
     )
     delivery_address = models.CharField(max_length=255)
     delivery_phone = models.CharField(max_length=20)
-    delivery_latitude = models.DecimalField(
-        max_digits=9, decimal_places=6, null=True, blank=True
-    )
-    delivery_longitude = models.DecimalField(
-        max_digits=9, decimal_places=6, null=True, blank=True
-    )
+    delivery_latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    delivery_longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     subtotal_amount = models.DecimalField(max_digits=12, decimal_places=2)
     delivery_fee = models.DecimalField(
         max_digits=12,

@@ -1,39 +1,20 @@
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 
-from accounts.models import Address
-from accounts.tests.factories import create_customer
+from core.testing.factories import AddressFactory, CustomerFactory
 
 
 class AddressConstraintTests(TestCase):
     def test_only_one_default_address_per_customer(self):
-        customer = create_customer()
-        Address.objects.create(
-            customer=customer,
-            address_name="Home",
-            address_line="Plot 12",
-            city="Dar es Salaam",
-            phone="+255712000001",
-            is_default=True,
-        )
+        customer = CustomerFactory()
+        AddressFactory(customer=customer, is_default=True)
 
-        with self.assertRaises(IntegrityError):
-            with transaction.atomic():
-                Address.objects.create(
-                    customer=customer,
-                    address_name="Office",
-                    address_line="Plot 20",
-                    city="Dar es Salaam",
-                    phone="+255712000001",
-                    is_default=True,
-                )
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            AddressFactory(customer=customer, is_default=True)
 
-        Address.objects.create(
-            customer=customer,
-            address_name="Office",
-            address_line="Plot 20",
-            city="Dar es Salaam",
-            phone="+255712000001",
-            is_default=False,
-        )
+        AddressFactory(customer=customer, is_default=False)
         self.assertEqual(customer.addresses.count(), 2)
+
+    def test_each_customer_can_have_a_default(self):
+        AddressFactory(is_default=True)
+        AddressFactory(is_default=True)

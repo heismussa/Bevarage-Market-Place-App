@@ -32,8 +32,7 @@ def require_env(name):
     value = os.environ.get(name, "").strip()
     if not value:
         raise CommandError(
-            f"Set {name} in the environment before running seed_demo. "
-            "See .env.example."
+            f"Set {name} in the environment before running seed_demo. See .env.example."
         )
     return value
 
@@ -208,19 +207,91 @@ class Command(BaseCommand):
 
 
 ABC_PRODUCTS = (
-    {"name": "Coca-Cola 500ml", "category": "Soda", "unit": ProductUnit.BOTTLE, "price": Decimal("1500.00"), "stock": 120},
-    {"name": "Fanta 500ml", "category": "Soda", "unit": ProductUnit.BOTTLE, "price": Decimal("1500.00"), "stock": 80},
-    {"name": "Sprite 500ml", "category": "Soda", "unit": ProductUnit.CAN, "price": Decimal("1500.00"), "stock": 60},
-    {"name": "Water 1.5L", "category": "Water", "unit": ProductUnit.BOTTLE, "price": Decimal("1000.00"), "stock": 200},
-    {"name": "Red Bull 250ml", "category": "Energy Drinks", "unit": ProductUnit.CAN, "price": Decimal("3500.00"), "stock": 45},
-    {"name": "Kilimanjaro Premium Lager", "category": "Beer", "unit": ProductUnit.BOTTLE, "price": Decimal("3000.00"), "stock": 70},
+    {
+        "name": "Coca-Cola 500ml",
+        "category": "Soda",
+        "unit": ProductUnit.BOTTLE,
+        "price": Decimal("1500.00"),
+        "stock": 120,
+    },
+    {
+        "name": "Fanta 500ml",
+        "category": "Soda",
+        "unit": ProductUnit.BOTTLE,
+        "price": Decimal("1500.00"),
+        "stock": 80,
+    },
+    {
+        "name": "Sprite 500ml",
+        "category": "Soda",
+        "unit": ProductUnit.CAN,
+        "price": Decimal("1500.00"),
+        "stock": 60,
+    },
+    {
+        "name": "Water 1.5L",
+        "category": "Water",
+        "unit": ProductUnit.BOTTLE,
+        "price": Decimal("1000.00"),
+        "stock": 200,
+    },
+    {
+        "name": "Red Bull 250ml",
+        "category": "Energy Drinks",
+        "unit": ProductUnit.CAN,
+        "price": Decimal("3500.00"),
+        "stock": 45,
+    },
+    {
+        "name": "Kilimanjaro Premium Lager",
+        "category": "Beer",
+        "unit": ProductUnit.BOTTLE,
+        "price": Decimal("3000.00"),
+        "stock": 70,
+    },
 )
 
 FRESH_PRODUCTS = (
-    {"name": "Coca-Cola 500ml", "category": "Soda", "unit": ProductUnit.BOTTLE, "price": Decimal("1600.00"), "stock": 90},
-    {"name": "Water 1.5L", "category": "Water", "unit": ProductUnit.BOTTLE, "price": Decimal("1200.00"), "stock": 150},
-    {"name": "Orange Juice 1L", "category": "Juice", "unit": ProductUnit.BOTTLE, "price": Decimal("4500.00"), "stock": 40},
-    {"name": "Mango Juice 500ml", "category": "Juice", "unit": ProductUnit.BOTTLE, "price": Decimal("3000.00"), "stock": 55},
-    {"name": "Mo Energy 500ml", "category": "Energy Drinks", "unit": ProductUnit.CAN, "price": Decimal("2500.00"), "stock": 35},
-    {"name": "Chenin Blanc 750ml", "category": "Wine", "unit": ProductUnit.BOTTLE, "price": Decimal("28000.00"), "stock": 18},
+    {
+        "name": "Coca-Cola 500ml",
+        "category": "Soda",
+        "unit": ProductUnit.BOTTLE,
+        "price": Decimal("1600.00"),
+        "stock": 90,
+    },
+    {
+        "name": "Water 1.5L",
+        "category": "Water",
+        "unit": ProductUnit.BOTTLE,
+        "price": Decimal("1200.00"),
+        "stock": 150,
+    },
+    {
+        "name": "Orange Juice 1L",
+        "category": "Juice",
+        "unit": ProductUnit.BOTTLE,
+        "price": Decimal("4500.00"),
+        "stock": 40,
+    },
+    {
+        "name": "Mango Juice 500ml",
+        "category": "Juice",
+        "unit": ProductUnit.BOTTLE,
+        "price": Decimal("3000.00"),
+        "stock": 55,
+    },
+    {
+        "name": "Mo Energy 500ml",
+        "category": "Energy Drinks",
+        "unit": ProductUnit.CAN,
+        "price": Decimal("2500.00"),
+        "stock": 35,
+    },
+    {
+        "name": "Chenin Blanc 750ml",
+        "category": "Wine",
+        "unit": ProductUnit.BOTTLE,
+        "price": Decimal("28000.00"),
+        "stock": 18,
+    },
 )

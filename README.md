@@ -6,6 +6,7 @@ Django REST Framework backend for a beverage delivery marketplace. The database 
 
 ```
 backend/                 Django project (config) and apps
+  core/                  Shared plumbing: errors, pagination, ownership, test helpers
   accounts/              User, Customer, StoreOwner, Address, auth API
   stores/                Store
   catalog/               Category, Product
@@ -50,6 +51,10 @@ Driver and Delivery tables are in the ERD for later and are not implemented.
 | Create an admin user | `docker compose exec backend python manage.py createsuperuser` |
 | Load demo data | `docker compose exec backend python manage.py seed_demo` |
 | Run tests | `docker compose exec backend python manage.py test` |
+| Lint | `docker compose exec backend ruff check .` |
+| Format | `docker compose exec backend ruff format .` |
+| Check for missing migrations | `docker compose exec backend python manage.py makemigrations --check --dry-run` |
+| Validate the OpenAPI schema | `docker compose exec backend python manage.py spectacular --validate --fail-on-warn --file /tmp/schema.yml` |
 | Stop the stack | `docker compose down` |
 
 `seed_demo` is safe to run twice. It will not duplicate rows and it will not reset passwords that were already set.
@@ -84,4 +89,71 @@ Tests run against PostgreSQL inside Docker. Partial unique indexes and check con
 
 ```bash
 docker compose exec backend python manage.py test
+```
+
+The Docker image installs `requirements-dev.txt` (factory_boy, ruff) on top of `requirements.txt`. A production image can be built with the default `REQUIREMENTS_FILE=requirements.txt`.
+
+## API conventions
+
+These apply to every endpoint. The shared code lives in `backend/core/`.
+
+### Error format
+
+Every error response has the same body:
+
+```json
+{"error": {"code": "VALIDATION_ERROR", "message": "This field is required.", "details": {"phone": ["This field is required."]}}}
+```
+
+- `code` is stable and machine-readable. Codes are listed in `core/errors.py` (`ErrorCode`). New codes may be added. Existing codes are never renamed or reused.
+- `message` is a human-readable sentence. For validation errors it is the first field error.
+- `details` is always an object. Validation errors put field errors here.
+- Services raise `core.errors.ApiError(code, message, status_code=..., details=...)` for business errors, for example `CART_STORE_CONFLICT` with status 409.
+- Unknown `/api/` URLs and unexpected server errors also use this format (`NOT_FOUND`, `INTERNAL_ERROR`). Internal error messages never include exception text.
+
+| Status | Code |
+| --- | --- |
+| 400 | `VALIDATION_ERROR`, `PARSE_ERROR` |
+| 401 | `NOT_AUTHENTICATED`, `AUTHENTICATION_FAILED`, `TOKEN_INVALID` |
+| 403 | `PERMISSION_DENIED` |
+| 404 | `NOT_FOUND` |
+| 405 | `METHOD_NOT_ALLOWED` |
+| 409 | `CONFLICT` or a specific business code |
+| 429 | `THROTTLED` (`details.wait_seconds`) |
+| 500 | `INTERNAL_ERROR` |
+
+### Permissions and ownership
+
+- The default permission is `core.permissions.DenyAll`. Every view must declare `permission_classes` explicitly.
+- Role checks use `IsCustomer`, `IsStoreOwner`, and `IsAdminRole` from `accounts/permissions.py`. A wrong role gets 403 `PERMISSION_DENIED`.
+- Object ownership is enforced by filtering the queryset, so another user's object returns 404 `NOT_FOUND`, never 403. Use `core.ownership.OwnerScopedQuerysetMixin` with `owner_field = OwnerField.CUSTOMER` (or `STORE_OWNER`, `STORE_OF_OBJECT`, `USER`), or `get_owned_or_404(...)` inside services.
+- `get_customer_profile(user)` and `get_store_owner_profile(user)` return the profile or raise 403.
+
+### Lists
+
+- Pagination: `?page=N&page_size=M`, default 20, maximum 100. The response is `{"count", "next", "previous", "results"}`.
+- Filtering uses django-filter (`filterset_class`), plus `?search=` and `?ordering=` where a view enables them.
+- Every list view uses `select_related` and `prefetch_related` and has an `assertNumQueries` test.
+
+### Code layout
+
+- Views stay thin. Business logic lives in each app's `services.py`. Serializers only validate and shape data.
+- Money is always `Decimal`. Prices and totals are recomputed on the server from the database.
+- Every endpoint has `extend_schema` with tags, request, response, error responses (`core.schema.standard_errors(400, 401, ...)` or `error_response(...)`), and examples.
+
+### Writing tests
+
+- Factories for every model are in `core/testing/factories.py`. All test users have the password `TEST_PASSWORD`.
+- `core.testing.api.ApiTestCase` gives you authenticated clients with a real JWT, and an error assertion:
+
+```python
+from core.errors import ErrorCode
+from core.testing.api import ApiTestCase
+
+
+class ExampleTests(ApiTestCase):
+    def test_other_customer_gets_404(self):
+        client, customer = self.customer_client()       # also: store_owner_client(), admin_client()
+        response = client.get("/api/v1/some-object/999/")
+        self.assertError(response, 404, ErrorCode.NOT_FOUND)
 ```

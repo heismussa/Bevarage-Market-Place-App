@@ -24,6 +24,8 @@ services:
   backend:
     build:
       context: ./backend
+      args:
+        REQUIREMENTS_FILE: requirements-dev.txt
     restart: unless-stopped
     env_file:
       - .env

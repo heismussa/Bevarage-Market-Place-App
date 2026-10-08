@@ -1,4 +1,4 @@
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiExample, extend_schema
 from rest_framework import serializers
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -17,6 +17,7 @@ class HealthView(APIView):
         tags=["health"],
         summary="Liveness check",
         responses=HealthResponseSerializer,
+        examples=[OpenApiExample("OK", value={"status": "ok"}, response_only=True)],
     )
     def get(self, request):
         return Response({"status": "ok"})
