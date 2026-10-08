@@ -175,6 +175,32 @@ class NotificationEventTests(TestCase):
         self.assertIn("down to 3", latest.message)
         self.assertEqual(self.inbox(self.customer.user).count("LOW_STOCK"), 0)
 
+    def test_owner_stock_edits_also_raise_low_stock(self):
+        def low_stock_messages():
+            return list(
+                Notification.objects.filter(user=self.owner_user, notification_type="LOW_STOCK")
+                .order_by("id")
+                .values_list("message", flat=True)
+            )
+
+        self.committed(catalog_services.set_stock, self.cola, 6)  # 50 -> 6, above 5
+        self.assertEqual(low_stock_messages(), [])
+        self.committed(catalog_services.set_stock, self.cola, 3)  # crosses
+        self.committed(catalog_services.set_stock, self.cola, 2)  # already low
+        self.assertEqual(len(low_stock_messages()), 1)
+
+        self.committed(catalog_services.set_stock, self.cola, 9)
+        self.committed(  # raising the threshold above the stock is a crossing too
+            catalog_services.update_product, self.cola, {"low_stock_threshold": 10}
+        )
+
+        name = self.cola.name
+        self.assertEqual(
+            low_stock_messages(),
+            [f"{name} is down to 3 (alert at 5).", f"{name} is down to 9 (alert at 10)."],
+        )
+        self.assertEqual(self.inbox(self.customer.user), [])
+
     def test_rolled_back_change_sends_nothing(self):
         with self.captureOnCommitCallbacks(execute=True):
             try:

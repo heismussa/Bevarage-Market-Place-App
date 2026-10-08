@@ -84,6 +84,10 @@ Both store owners use `DEMO_STORE_OWNER_PASSWORD`.
 - `POST /api/v1/auth/login/` with `phone` and `password`
 - `POST /api/v1/auth/refresh/` with `refresh`
 - `GET` and `PATCH /api/v1/auth/me/` with `Authorization: Bearer <access>`
+- `POST /api/v1/auth/password/reset/` with `phone` sends a 6-digit code by SMS, then `POST /api/v1/auth/password/reset/confirm/` with `phone`, `code` and `new_password`
+- `POST /api/v1/auth/password/change/` with `current_password` and `new_password` returns new tokens
+
+Changing or resetting a password makes every token issued before it invalid. `SMS_BACKEND=console` only writes the SMS to the backend log (`docker compose logs backend`); a real SMS provider is still needed for production. The reset throttles use Django's cache, so production needs a shared cache such as Redis.
 
 The full endpoint list, with examples, is in the API docs. A short map by area:
 
@@ -104,7 +108,7 @@ The full endpoint list, with examples, is in the API docs. A short map by area:
 
 The roadmap and business rules for each stage are in [`docs/BACKEND_PLAN.md`](docs/BACKEND_PLAN.md).
 
-Frontend developers start with [`docs/FRONTEND_HANDOFF.md`](docs/FRONTEND_HANDOFF.md). The OpenAPI contract is committed as [`docs/openapi.yaml`](docs/openapi.yaml). Regenerate it after any API change:
+Frontend developers start with [`docs/FRONTEND_HANDOFF.md`](docs/FRONTEND_HANDOFF.md); the team split and setup steps are in [`docs/FRONTEND_TEAM_PLAN.md`](docs/FRONTEND_TEAM_PLAN.md). The OpenAPI contract is committed as [`docs/openapi.yaml`](docs/openapi.yaml). Regenerate it after any API change:
 
 ```bash
 docker compose exec backend python manage.py spectacular --file /app/openapi.yaml --validate --fail-on-warn

@@ -13,6 +13,7 @@ from cart.services import stock_message
 from catalog.models import AvailabilityStatus, CategoryStatus, Product
 from catalog.services import sync_availability
 from core.errors import ApiError, ErrorCode
+from notifications.services import notify_if_became_low
 from orders import events
 from orders.models import Order, OrderItem, OrderStatus, OrderStatusHistory
 from orders.state_machine import (
@@ -183,14 +184,14 @@ def create_order(customer, address_id, payment_method, payer_phone=None, notes=N
     )
 
     # 7. Take the stock. Products are locked, so their loaded stock is the "before" value.
-    low_stock = []
     for product, quantity, _ in lines:
         Product.objects.filter(pk=product.pk).update(
             stock_quantity=F("stock_quantity") - quantity, updated_at=timezone.now()
         )
-        remaining = product.stock_quantity - quantity
-        if events.crossed_low_stock(product, product.stock_quantity, remaining):
-            low_stock.append((product, remaining))
+        before = product.stock_quantity
+        product.stock_quantity -= quantity
+        product.store = store
+        notify_if_became_low(product, before, product.low_stock_threshold)
     sync_availability(Product.objects.filter(pk__in=quantities))
 
     # 8. History, 9. payment.
@@ -213,8 +214,6 @@ def create_order(customer, address_id, payment_method, payer_phone=None, notes=N
     cart.save(update_fields=["store", "updated_at"])
 
     transaction.on_commit(lambda: events.notify_order_event(order, events.ORDER_CREATED))
-    if low_stock:
-        transaction.on_commit(lambda: events.notify_low_stock(store.owner_id, low_stock))
     return order
 
 

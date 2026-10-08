@@ -243,9 +243,31 @@ cancelled.
 - **2026-10-08, notifications:** the customer is told about every status change,
   including their own cancel. A cancel not made by the store owner (customer, admin,
   expiry) also tells the store owner, but only if the store could already see the
-  order. LOW_STOCK is raised by customer orders only, not by the owner editing stock.
+  order.
+- **2026-10-08, own-cancel notification confirmed:** the customer keeps getting a bell
+  notification for a cancel they made themselves.
+- **2026-10-08, LOW_STOCK on owner edits:** replaces the earlier "customer orders only"
+  rule. LOW_STOCK fires whenever a product goes from above its threshold to at or below
+  it, whether from checkout, the stock endpoint, a product edit, or raising the
+  threshold. It does not repeat while the product stays low.
+- **2026-10-08, cancelled payment status:** an unpaid order that is cancelled or
+  rejected keeps `payment_status = CANCELLED` (no money was taken). Frontends show it
+  as "Not charged".
+- **2026-10-08, password reset:** `auth/password/reset/` sends a 6-digit SMS code and
+  `auth/password/reset/confirm/` sets the new password. The code is derived with an
+  HMAC from the user's current password hash and a time window (no new table, no schema
+  change), so it dies once the password changes. Access and refresh tokens carry a
+  password fingerprint; a change or reset invalidates every older token.
+  `auth/password/change/` returns fresh tokens. The SMS backend is a console stub.
+- **2026-10-08, product search:** launch with one store, so per-store product search is
+  enough. Global search across stores comes when more shops join.
 
 ## Follow-ups after all stages
+
+- **Global product search** (`products/?search=` across all open stores) when more
+  stores join.
+- **Real SMS provider** for password reset codes, plus a shared cache (Redis) so
+  throttles hold across processes.
 
 - **Remind the developer:** they have questions about the admin cancel endpoint and
   admin screens. Raise this once Stages 0-7 are done.

@@ -666,7 +666,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TokenObtainPairRequest'
+              $ref: '#/components/schemas/LoginRequest'
             examples:
               Login:
                 value:
@@ -674,10 +674,10 @@ paths:
                   password: a-strong-password
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TokenObtainPairRequest'
+              $ref: '#/components/schemas/LoginRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TokenObtainPairRequest'
+              $ref: '#/components/schemas/LoginRequest'
         required: true
       security:
       - {}
@@ -686,7 +686,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TokenObtainPair'
+                $ref: '#/components/schemas/TokenPair'
               examples:
                 Tokens:
                   value:
@@ -811,30 +811,100 @@ paths:
                       details: {}
                   summary: NOT_AUTHENTICATED
           description: Missing or invalid credentials
-  /api/v1/auth/refresh/:
+  /api/v1/auth/password/change/:
     post:
-      operationId: v1_auth_refresh_create
-      description: |-
-        Takes a refresh type JSON web token and returns an access type JSON web
-        token if the refresh token is valid.
-      summary: Refresh an access token
+      operationId: v1_auth_password_change_create
+      description: 'Logs out every other device. Returns fresh tokens so this device
+        stays logged in: replace the stored tokens with them.'
+      summary: Change my password
       tags:
       - auth
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TokenRefreshRequest'
+              $ref: '#/components/schemas/PasswordChangeRequest'
             examples:
-              Refresh:
+              Change:
                 value:
-                  refresh: <jwt refresh>
+                  current_password: the-old-password
+                  new_password: a-new-strong-password
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TokenRefreshRequest'
+              $ref: '#/components/schemas/PasswordChangeRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TokenRefreshRequest'
+              $ref: '#/components/schemas/PasswordChangeRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+              examples:
+                NewTokens:
+                  value:
+                    refresh: <jwt refresh>
+                    access: <jwt access>
+                  summary: New tokens
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                VALIDATIONERROR:
+                  value:
+                    error:
+                      code: VALIDATION_ERROR
+                      message: This field is required.
+                      details:
+                        field:
+                        - This field is required.
+                  summary: VALIDATION_ERROR
+          description: Invalid input
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                NOTAUTHENTICATED:
+                  value:
+                    error:
+                      code: NOT_AUTHENTICATED
+                      message: Authentication credentials were not provided.
+                      details: {}
+                  summary: NOT_AUTHENTICATED
+          description: Missing or invalid credentials
+  /api/v1/auth/password/reset/:
+    post:
+      operationId: v1_auth_password_reset_create
+      description: Sends a 6-digit code by SMS if the phone belongs to an active account.
+        The response is the same either way, so it never reveals which numbers are
+        registered. Limited per phone number.
+      summary: 'Forgot password: send a reset code'
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
+            examples:
+              Request:
+                value:
+                  phone: '+255712345678'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
         required: true
       security:
       - {}
@@ -843,7 +913,145 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TokenRefresh'
+                $ref: '#/components/schemas/Detail'
+              examples:
+                Sent:
+                  value:
+                    detail: If this phone number is registered, a reset code has been
+                      sent by SMS.
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                VALIDATIONERROR:
+                  value:
+                    error:
+                      code: VALIDATION_ERROR
+                      message: This field is required.
+                      details:
+                        field:
+                        - This field is required.
+                  summary: VALIDATION_ERROR
+          description: Invalid input
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                THROTTLED:
+                  value:
+                    error:
+                      code: THROTTLED
+                      message: Request was throttled.
+                      details:
+                        wait_seconds: 30
+          description: Rate limited
+  /api/v1/auth/password/reset/confirm/:
+    post:
+      operationId: v1_auth_password_reset_confirm_create
+      description: Every existing login on every device stops working; the user logs
+        in again with the new password. A wrong or expired code is a VALIDATION_ERROR
+        on `code`. Limited per phone number.
+      summary: 'Forgot password: set a new password with the code'
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+            examples:
+              Confirm:
+                value:
+                  phone: '+255712345678'
+                  code: '482913'
+                  new_password: a-new-strong-password
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+              examples:
+                Done:
+                  value:
+                    detail: Your password has been reset. Log in with the new password.
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                VALIDATIONERROR:
+                  value:
+                    error:
+                      code: VALIDATION_ERROR
+                      message: This field is required.
+                      details:
+                        field:
+                        - This field is required.
+                  summary: VALIDATION_ERROR
+          description: Invalid input
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                THROTTLED:
+                  value:
+                    error:
+                      code: THROTTLED
+                      message: Request was throttled.
+                      details:
+                        wait_seconds: 30
+          description: Rate limited
+  /api/v1/auth/refresh/:
+    post:
+      operationId: v1_auth_refresh_create
+      description: Returns a new access token; keep using the same refresh token.
+        Fails with TOKEN_INVALID once the password has been changed or reset.
+      summary: Refresh an access token
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+            examples:
+              Refresh:
+                value:
+                  refresh: <jwt refresh>
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Refresh'
               examples:
                 NewAccessToken:
                   value:
@@ -5173,6 +5381,13 @@ components:
       - sales_last_7_days
       - total_orders
       - total_sales
+    Detail:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
     ErrorBody:
       type: object
       properties:
@@ -5199,6 +5414,20 @@ components:
           type: string
       required:
       - status
+    LoginRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - password
+      - phone
     LowStockItem:
       type: object
       properties:
@@ -6231,6 +6460,50 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PublicStore'
+    PasswordChangeRequest:
+      type: object
+      properties:
+        current_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - current_password
+      - new_password
+    PasswordResetConfirmRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+          minLength: 1
+          pattern: ^\+255\d{9}$
+          maxLength: 20
+        code:
+          type: string
+          minLength: 1
+          pattern: ^\d{6}$
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - code
+      - new_password
+      - phone
+    PasswordResetRequestRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+          minLength: 1
+          pattern: ^\+255\d{9}$
+          maxLength: 20
+      required:
+      - phone
     PatchedAddressRequest:
       type: object
       description: |-
@@ -6676,6 +6949,25 @@ components:
           description: How many notifications were marked read.
       required:
       - updated
+    Refresh:
+      type: object
+      properties:
+        refresh:
+          type: string
+        access:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - refresh
+    RefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
     RegisterRequest:
       type: object
       description: Public registration. ADMIN and DRIVER are not valid choices.
@@ -6754,48 +7046,15 @@ components:
       description: |-
         * `OPEN` - Open
         * `CLOSED` - Closed
-    TokenObtainPair:
-      type: object
-      properties:
-        access:
-          type: string
-          readOnly: true
-        refresh:
-          type: string
-          readOnly: true
-      required:
-      - access
-      - refresh
-    TokenObtainPairRequest:
-      type: object
-      properties:
-        phone:
-          type: string
-          writeOnly: true
-          minLength: 1
-        password:
-          type: string
-          writeOnly: true
-          minLength: 1
-      required:
-      - password
-      - phone
-    TokenRefresh:
-      type: object
-      properties:
-        access:
-          type: string
-          readOnly: true
-      required:
-      - access
-    TokenRefreshRequest:
+    TokenPair:
       type: object
       properties:
         refresh:
           type: string
-          writeOnly: true
-          minLength: 1
+        access:
+          type: string
       required:
+      - access
       - refresh
     TopProduct:
       type: object

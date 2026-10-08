@@ -4,6 +4,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from catalog.models import AvailabilityStatus, Product
+from notifications.services import notify_if_became_low
 
 DUPLICATE_NAME_MESSAGE = "This store already has a product with this name."
 
@@ -63,23 +64,35 @@ def create_product(store, data):
     return _save(product)
 
 
+def _lock(product):
+    return (
+        Product.objects.select_for_update(of=("self",)).select_related("store").get(pk=product.pk)
+    )
+
+
 @transaction.atomic
 def update_product(product, data):
-    product = Product.objects.select_for_update().get(pk=product.pk)
+    product = _lock(product)
+    before = (product.stock_quantity, product.low_stock_threshold)
     for field, value in data.items():
         setattr(product, field, value)
     product.availability_status = compute_availability(
         product.availability_status, product.stock_quantity
     )
-    return _save(product)
+    _save(product)
+    notify_if_became_low(product, *before)
+    return product
 
 
 @transaction.atomic
 def set_stock(product, stock_quantity):
-    product = Product.objects.select_for_update().get(pk=product.pk)
+    product = _lock(product)
+    before = (product.stock_quantity, product.low_stock_threshold)
     product.stock_quantity = stock_quantity
     product.availability_status = compute_availability(product.availability_status, stock_quantity)
-    return _save(product, update_fields=["stock_quantity", "availability_status", "updated_at"])
+    _save(product, update_fields=["stock_quantity", "availability_status", "updated_at"])
+    notify_if_became_low(product, *before)
+    return product
 
 
 @transaction.atomic

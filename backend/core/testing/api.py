@@ -1,15 +1,15 @@
 import json
 
 from rest_framework.test import APIClient, APITestCase
-from rest_framework_simplejwt.tokens import RefreshToken
 
+from accounts.tokens import SessionRefreshToken
 from core.testing.factories import AdminUserFactory, CustomerFactory, StoreOwnerFactory
 
 
 def authenticated_client(user):
     """APIClient that sends a real JWT access token for user."""
     client = APIClient()
-    token = RefreshToken.for_user(user).access_token
+    token = SessionRefreshToken.for_user(user).access_token
     client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
     return client
 

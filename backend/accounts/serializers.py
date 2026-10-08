@@ -3,8 +3,10 @@ from decimal import Decimal
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
 
 from accounts.models import Address, User, UserRole
+from accounts.tokens import SessionRefreshToken, ensure_current, user_for_token
 from accounts.validators import validate_phone
 
 REGISTRATION_ROLE_CHOICES = (
@@ -57,6 +59,43 @@ class RegisterSerializer(serializers.Serializer):
             email=validated_data.get("email"),
             role=validated_data["role"],
         )
+
+
+class LoginSerializer(TokenObtainPairSerializer):
+    token_class = SessionRefreshToken
+
+
+class RefreshSerializer(TokenRefreshSerializer):
+    token_class = SessionRefreshToken
+
+    def validate(self, attrs):
+        refresh = self.token_class(attrs["refresh"])
+        ensure_current(user_for_token(refresh), refresh)
+        return super().validate(attrs)
+
+
+class TokenPairSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+    access = serializers.CharField()
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    phone = serializers.CharField(max_length=20, validators=[validate_phone])
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    phone = serializers.CharField(max_length=20, validators=[validate_phone])
+    code = serializers.RegexField(r"^\d{6}$", error_messages={"invalid": "Enter the 6-digit code."})
+    new_password = serializers.CharField(write_only=True, trim_whitespace=False)
+
+
+class PasswordChangeSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True, trim_whitespace=False)
+    new_password = serializers.CharField(write_only=True, trim_whitespace=False)
+
+
+class DetailSerializer(serializers.Serializer):
+    detail = serializers.CharField()
 
 
 class UserPublicSerializer(serializers.ModelSerializer):

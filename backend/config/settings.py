@@ -100,9 +100,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ),
+    "DEFAULT_AUTHENTICATION_CLASSES": ("accounts.authentication.SessionJWTAuthentication",),
     "DEFAULT_PERMISSION_CLASSES": ("core.permissions.DenyAll",),
     "DEFAULT_PAGINATION_CLASS": "core.pagination.StandardPagination",
     "PAGE_SIZE": 20,
@@ -121,6 +119,12 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
 }
+
+# Password reset. Codes go out through SMS_BACKEND; "console" only writes them to the log.
+SMS_BACKEND = env("SMS_BACKEND", default="console")
+PASSWORD_RESET_CODE_MINUTES = env.int("PASSWORD_RESET_CODE_MINUTES", default=10)
+PASSWORD_RESET_REQUEST_RATE = env("PASSWORD_RESET_REQUEST_RATE", default="3/hour")
+PASSWORD_RESET_CONFIRM_RATE = env("PASSWORD_RESET_CONFIRM_RATE", default="10/hour")
 
 # Payments. Provider secrets come only from the environment.
 PAYMENT_TIMEOUT_MINUTES = env.int("PAYMENT_TIMEOUT_MINUTES", default=15)

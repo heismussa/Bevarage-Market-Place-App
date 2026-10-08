@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BeverageMart Frontend Task Breakdown</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm; }
+  body { font-family: "Segoe UI", Arial, sans-serif; font-size: 10.5pt; color: #1f2328; line-height: 1.4; }
+  h1 { font-size: 22pt; margin: 0 0 4px; color: #c2410c; }
+  h2 { font-size: 15pt; margin: 22px 0 6px; padding-bottom: 4px; border-bottom: 2px solid #f97316; page-break-after: avoid; }
+  h3 { font-size: 12pt; margin: 14px 0 6px; color: #9a3412; page-break-after: avoid; }
+  p { margin: 4px 0 8px; }
+  .sub { color: #57606a; margin-bottom: 14px; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 12px; page-break-inside: auto; }
+  tr { page-break-inside: avoid; }
+  th, td { border: 1px solid #d0d7de; padding: 5px 6px; vertical-align: top; text-align: left; }
+  th { background: #fff7ed; font-weight: 600; }
+  td.id { width: 40px; font-weight: 600; white-space: nowrap; }
+  td.d { width: 42px; text-align: center; white-space: nowrap; }
+  td.dep { width: 62px; white-space: nowrap; color: #57606a; }
+  code { font-family: Consolas, monospace; font-size: 9.5pt; background: #f6f8fa; padding: 0 3px; border-radius: 3px; }
+  .box { border: 1px solid #fdba74; background: #fff7ed; padding: 8px 10px; border-radius: 6px; margin: 8px 0 12px; }
+  .person { display: inline-block; padding: 2px 8px; border-radius: 10px; color: #fff; font-weight: 600; font-size: 9.5pt; }
+  .a { background: #2563eb; } .b { background: #16a34a; } .c { background: #9333ea; } .t { background: #475569; }
+  .break { page-break-before: always; }
+  ul { margin: 4px 0 8px 18px; padding: 0; }
+  li { margin: 2px 0; }
+</style>
+</head>
+<body>
+
+<h1>BeverageMart Frontend Task Breakdown</h1>
+<p class="sub">Three developers &middot; Customer mobile app + Store owner dashboard &middot; 5 weeks &middot; Backend API v1</p>
+
+<div class="box">
+<b>How to read this document.</b> Every task is small (a quarter of a day to two days).
+Each has an ID (for example <b>A-07</b>), the work, how we know it is done, the size in days,
+and the tasks it waits for. Put each task on your board (Trello, GitHub Projects, Jira) as one card,
+and use the ID in the branch name and pull request title, for example <code>feat/A-07-token-refresh</code>.
+Read <code>docs/FRONTEND_HANDOFF.md</code> before starting; it has every endpoint, error code and sample response.
+</div>
+
+<table>
+  <tr><th>Who</th><th>Owns</th><th>Total size</th></tr>
+  <tr><td><span class="person a">Developer A</span></td><td>Shared foundation, sign in / sign up / passwords, profile, addresses, notifications (both apps), store profile</td><td>about 18 days</td></tr>
+  <tr><td><span class="person b">Developer B</span></td><td>Customer shopping: home, store, product, cart, checkout, payment, order tracking, my orders</td><td>about 16 days</td></tr>
+  <tr><td><span class="person c">Developer C</span></td><td>Owner dashboard: layout, dashboard, orders, products, low stock, analytics</td><td>about 15 days</td></tr>
+</table>
+
+<h2>Step 0: Everyone, day 1 (before any task)</h2>
+<table>
+  <tr><th>ID</th><th>Task</th><th>Done when</th><th>Days</th></tr>
+  <tr><td class="id">S-01</td><td>Install Git, Docker Desktop, Node.js 20 LTS, VS Code or Cursor, and Expo Go on your phone.</td><td>All installed.</td><td class="d">0.25</td></tr>
+  <tr><td class="id">S-02</td><td>Clone the repository. Copy <code>.env.example</code> to <code>.env</code>. Get the demo passwords and <code>MOCK_PAYMENT_WEBHOOK_SECRET</code> privately from the project lead.</td><td><code>.env</code> exists and is not committed.</td><td class="d">0.25</td></tr>
+  <tr><td class="id">S-03</td><td>In <code>.env</code> add your computer's Wi-Fi IP (from <code>ipconfig</code>) and <code>10.0.2.2</code> to <code>ALLOWED_HOSTS</code>; set <code>CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8081</code>.</td><td>Values saved.</td><td class="d">0.1</td></tr>
+  <tr><td class="id">S-04</td><td>Run <code>docker compose up --build -d</code>, then <code>docker compose exec backend python manage.py migrate</code> and <code>... seed_demo</code>.</td><td><a>http://localhost:8000/api/docs/</a> opens.</td><td class="d">0.25</td></tr>
+  <tr><td class="id">S-05</td><td>In the API docs page, log in as the demo customer and call <code>GET /api/v1/stores/</code>. Log in as the ABC Drinks owner and call <code>GET /api/v1/owner/stores/</code>.</td><td>Both return data.</td><td class="d">0.25</td></tr>
+  <tr><td class="id">S-06</td><td>Read <code>docs/FRONTEND_HANDOFF.md</code> sections 1 to 6 (auth, errors, statuses, your screens, must / must not).</td><td>Questions written down for the first check-in.</td><td class="d">0.5</td></tr>
+</table>
+
+<!-- ===================== DEVELOPER A ===================== -->
+<h2 class="break"><span class="person a">Developer A</span> Foundation, accounts and notifications</h2>
+<p>A starts first. Tasks A-01 to A-12 should be merged by <b>day 3 of week 1</b>, because B and C use them. Until then, B and C build screens with the sample JSON from the handoff.</p>
+
+<h3>A1. Project foundation (week 1)</h3>
+<table>
+  <tr><th>ID</th><th>Task</th><th>Done when</th><th>Days</th><th>Waits for</th></tr>
+  <tr><td class="id">A-01</td><td>Create <code>frontend/</code> as an npm workspace with folders <code>packages/api</code>, <code>packages/ui-tokens</code>, <code>customer-app</code>, <code>owner-dashboard</code>.</td><td><code>npm install</code> at <code>frontend/</code> works.</td><td class="d">0.5</td><td class="dep">S-04</td></tr>
+  <tr><td class="id">A-02</td><td>Create the Expo app (TypeScript, Expo Router, NativeWind).</td><td>Opens on a real phone with Expo Go.</td><td class="d">0.5</td><td class="dep">A-01</td></tr>
+  <tr><td class="id">A-03</td><td>Create the owner dashboard (Vite, React, TypeScript, React Router, Tailwind, shadcn/ui).</td><td>Opens at <code>localhost:5173</code>.</td><td class="d">0.5</td><td class="dep">A-01</td></tr>
+  <tr><td class="id">A-04</td><td>ESLint, Prettier and TypeScript strict mode for both apps; <code>npm run lint</code> and <code>npm run typecheck</code>.</td><td>Both commands pass.</td><td class="d">0.5</td><td class="dep">A-02, A-03</td></tr>
+  <tr><td class="id">A-05</td><td>Script <code>npm run gen:api</code> that generates <code>packages/api/src/schema.d.ts</code> from <code>docs/openapi.yaml</code>.</td><td>Types generate; a sample type compiles.</td><td class="d">0.25</td><td class="dep">A-01</td></tr>
+  <tr><td class="id">A-06</td><td>Typed API client (openapi-fetch). Base URL from <code>EXPO_PUBLIC_API_URL</code> / <code>VITE_API_URL</code>. Adds <code>Authorization: Bearer</code>. Add <code>.env.example</code> for each app.</td><td><code>GET /stores/</code> works from both apps.</td><td class="d">0.5</td><td class="dep">A-05</td></tr>
+  <tr><td class="id">A-07</td><td>Token refresh: on <code>401 TOKEN_INVALID</code> call <code>auth/refresh/</code> once and retry; if refresh fails, log out. Only one refresh at a time when several calls fail together.</td><td>Expired access token is refreshed silently; a revoked one logs out.</td><td class="d">1</td><td class="dep">A-06</td></tr>
+  <tr><td class="id">A-08</td><td>Error helper: read <code>error.code</code>, <code>message</code>, <code>details</code>; put field errors on form fields (react-hook-form).</td><td>A failed sign-up shows the phone error under the phone input.</td><td class="d">0.5</td><td class="dep">A-06</td></tr>
+  <tr><td class="id">A-09</td><td>Formatters: money <code>"1500.00"</code> to <code>TSh 1,500</code>; dates in Africa/Dar_es_Salaam; phone input that sends <code>+255XXXXXXXXX</code>.</td><td>Unit tests pass.</td><td class="d">0.5</td><td class="dep">A-01</td></tr>
+  <tr><td class="id">A-10</td><td>Label maps for order status and payment status (handoff section 3, e.g. CANCELLED payment = "Not charged").</td><td>Exported from <code>packages/api</code>.</td><td class="d">0.25</td><td class="dep">A-01</td></tr>
+  <tr><td class="id">A-11</td><td>Theme tokens: dark (both apps) and light (dashboard) colours, radius, spacing, taken from the mockups.</td><td>Both apps use the tokens.</td><td class="d">0.5</td><td class="dep">A-02, A-03</td></tr>
+  <tr><td class="id">A-12</td><td>Auth state: save tokens (SecureStore on phone, localStorage on web), load on start, call <code>GET auth/me/</code>, send CUSTOMER to the app and STORE_OWNER to the dashboard.</td><td>Reopening the app keeps you logged in; wrong role sees "not supported".</td><td class="d">1</td><td class="dep">A-07</td></tr>
+</table>
+
+<h3>A2. Customer app: accounts (week 1 to 2)</h3>
+<table>
+  <tr><th>ID</th><th>Task</th><th>Done when</th><th>Days</th><th>Waits for</th></tr>
+  <tr><td class="id">A-13</td><td>Splash screen (logo, then go to login or home).</td><td>Matches the mockup.</td><td class="d">0.25</td><td class="dep">A-12</td></tr>
+  <tr><td class="id">A-14</td><td>Log in screen (<code>POST auth/login/</code>). Show "wrong phone or password" for <code>AUTHENTICATION_FAILED</code>.</td><td>Demo customer can log in.</td><td class="d">0.5</td><td class="dep">A-12</td></tr>
+  <tr><td class="id">A-15</td><td>Sign up screen (<code>POST auth/register/</code>, role CUSTOMER), then log in automatically.</td><td>New user lands on Home.</td><td class="d">0.5</td><td class="dep">A-14</td></tr>
+  <tr><td class="id">A-16</td><td>Forgot password, step 1: enter phone (<code>POST auth/password/reset/</code>).</td><td>Shows the server message; goes to step 2.</td><td class="d">0.25</td><td class="dep">A-14</td></tr>
+  <tr><td class="id">A-17</td><td>Forgot password, step 2: code + new password (<code>auth/password/reset/confirm/</code>). Handle wrong code, weak password, <code>THROTTLED</code>.</td><td>Reset works with the code from <code>docker compose logs backend</code>.</td><td class="d">0.5</td><td class="dep">A-16</td></tr>
+  <tr><td class="id">A-18</td><td>Profile screen: show and edit name, phone, email (<code>GET/PATCH auth/me/</code>).</td><td>Changes are saved.</td><td class="d">0.5</td><td class="dep">A-12</td></tr>
+  <tr><td class="id">A-19</td><td>Change password (<code>auth/password/change/</code>); save the new tokens it returns.</td><td>Still logged in here; other device is logged out.</td><td class="d">0.5</td><td class="dep">A-18</td></tr>
+  <tr><td class="id">A-20</td><td>Log out button (delete tokens, go to login).</td><td>Works.</td><td class="d">0.1</td><td class="dep">A-18</td></tr>
+  <tr><td class="id">A-21</td><td>Addresses list: show, delete, set default (<code>addresses/</code>, <code>set-default/</code>).</td><td>Default address is marked.</td><td class="d">0.5</td><td class="dep">A-12</td></tr>
+  <tr><td class="id">A-22</td><td>Add / edit address form with "use my location" (sends <code>latitude</code>/<code>longitude</code> as strings).</td><td>New address appears in the list.</td><td class="d">1</td><td class="dep">A-21</td></tr>
+</table>
+
+<h3>A3. Notifications, both apps (week 3)</h3>
+<table>
+  <tr><th>ID</th><th>Task</th><th>Done when</th><th>Days</th><th>Waits for</th></tr>
+  <tr><td class="id">A-23</td><td>Bell icon with unread count (<code>notifications/unread-count/</code>), polled every 30 to 60 s, paused when the app is hidden.</td><td>Count goes up after placing an order.</td><td class="d">0.5</td><td class="dep">A-12</td></tr>
+  <tr><td class="id">A-24</td><td>Customer notification list: pagination, mark one read, mark all read, tap opens the order.</td><td>Read items look different.</td><td class="d">1</td><td class="dep">A-23</td></tr>
+  <tr><td class="id">A-25</td><td>Owner top bar: bell, notification dropdown, profile menu, dark / light switch.</td><td>Works on every dashboard page.</td><td class="d">1</td><td class="dep">A-23, C-01</td></tr>
+</table>
+
+<h3>A4. Owner dashboard: accounts and store profile (week 2 to 3)</h3>
+<table>
+  <tr><th>ID</th><th>Task</th><th>Done when</th><th>Days</th><th>Waits for</th></tr>
+  <tr><td class="id">A-26</td><td>Owner log in and sign up pages (role STORE_OWNER).</td><td>Demo owner can log in.</td><td class="d">0.5</td><td class="dep">A-12</td></tr>
+  <tr><td class="id">A-27</td><td>Owner forgot password and change password pages (reuse the customer logic).</td><td>Both flows work on the web.</td><td class="d">0.5</td><td class="dep">A-26</td></tr>
+  <tr><td class="id">A-28</td><td>First store: an owner with no store is sent to a "create your store" form (<code>POST owner/stores/</code>).</td><td>New owner can create a store.</td><td class="d">1</td><td class="dep">A-26</td></tr>
+  <tr><td class="id">A-29</td><td>Store profile page: edit details and upload a logo (JPEG / PNG / WebP under 2 MB, compress first).</td><td>Logo shows in the customer app.</td><td class="d">1</td><td class="dep">A-28</td></tr>
+  <tr><td class="id">A-30</td><td>"Accept new orders" switch mapped to store <code>status</code> OPEN / CLOSED.</td><td>Closed store shows "Closed" to customers.</td><td class="d">0.25</td><td class="dep">A-29</td></tr>
+  <tr><td class="id">A-31</td><td>Review pass: loading, empty and error states on every screen of both apps.</td><td>Checklist signed off with B and C.</td><td class="d">1</td><td class="dep">week 4</td></tr>
+</table>
+
+<!-- ===================== DEVELOPER B ===================== -->
+<h2 class="break"><span class="person b">Developer B</span> Customer shopping and ordering</h2>
+<p>Week 1: build the screens with the sample JSON from the handoff. Connect to the API once A-06 and A-12 are merged.</p>
+
+<h3>B1. App frame and shared pieces (week 1)</h3>
+<table>
+  <tr><th>ID</th><th>Task</th><th>Done when</th><th>Days</th><th>Waits for</th></tr>
+  <tr><td class="id">B-01</td><td>Bottom tabs (Home, Orders, Cart, Profile) and screen stack.</td><td>Tabs switch; matches the mockup.</td><td class="d">0.5</td><td class="dep">A-02</td></tr>
+  <tr><td class="id">B-02</td><td>Shared components: button, input, store card, product card, badge, quantity stepper, loading skeleton, empty state, error with "Try again".</td><td>Used by at least two screens.</td><td class="d">1.5</td><td class="dep">A-11</td></tr>
+</table>
+
+<h3>B2. Browse (week 1 to 2)</h3>
+<table>
+  <tr><th>ID</th><th>Task</th><th>Done when</th><th>Days</th><th>Waits for</th></tr>
+  <tr><td class="id">B-03</td><td>Home: ask for location, show the location chip, list stores near the user (<code>stores/?lat=&amp;lng=&amp;ordering=distance</code>); the chip can also filter by <code>city</code>.</td><td>Distance shows on each card.</td><td class="d">1</td><td class="dep">B-02, A-06</td></tr>
+  <tr><td class="id">B-04</td><td>Home: search bar (searches stores) and category chips (<code>categories/</code>, <code>stores/?category=</code>).</td><td>Filtering changes the list.</td><td class="d">0.5</td><td class="dep">B-03</td></tr>
+  <tr><td class="id">B-05</td><td>Home: infinite scroll, pull to refresh, "Open now" / "Closed" badge.</td><td>Works with many stores.</td><td class="d">0.5</td><td class="dep">B-03</td></tr>
+  <tr><td class="id">B-06</td><td>Store page header: logo, name, open / closed, delivery fee, distance (<code>stores/{id}/</code>).</td><td>Matches the mockup.</td><td class="d">0.5</td><td class="dep">B-03</td></tr>
+  <tr><td class="id">B-07</td><td>Store products grid with search, category filter and infinite scroll (<code>stores/{id}/products/</code>).</td><td>Search finds "Coca".</td><td class="d">1</td><td class="dep">B-06</td></tr>
+  <tr><td class="id">B-08</td><td>Product detail: image, price, stock, availability, quantity stepper (<code>products/{id}/</code>).</td><td>Out-of-stock product cannot be added.</td><td class="d">0.5</td><td class="dep">B-07</td></tr>
+</table>
+
+<h3>B3. Cart and checkout (week 2 to 3)</h3>
+<table>
+  <tr><th>ID</th><th>Task</th><th>Done when</th><th>Days</th><th>Waits for</th></tr>
+  <tr><td class="id">B-09</td><td>Add to cart from card and detail (<code>POST cart/items/</code>); cart badge count on the tab.</td><td>Badge updates.</td><td class="d">0.5</td><td class="dep">B-08</td></tr>
+  <tr><td class="id">B-10</td><td>"Start a new cart?" dialog for <code>CART_STORE_CONFLICT</code> (items from another store).</td><td>Choosing yes empties and adds.</td><td class="d">0.5</td><td class="dep">B-09</td></tr>
+  <tr><td class="id">B-11</td><td>Cart screen: lines, change quantity, remove, show <code>warnings</code>, subtotal from the server. Replace cart state with every response.</td><td>Numbers always match the server.</td><td class="d">1</td><td class="dep">B-09</td></tr>
+  <tr><td class="id">B-12</td><td>Checkout: choose delivery address; link to "add address".</td><td>Default address is preselected.</td><td class="d">0.5</td><td class="dep">B-11, A-21</td></tr>
+  <tr><td class="id">B-13</td><td>Checkout: payment choice (Cash, M-Pesa, Tigo Pesa, Airtel Money) and notes.</td><td>No card option shown.</td><td class="d">0.5</td><td class="dep">B-12</td></tr>
+  <tr><td class="id">B-14</td><td>Place order (<code>POST orders/</code>): button disabled while sending; handle <code>STORE_CLOSED</code>, <code>INSUFFICIENT_STOCK</code>, <code>PRODUCT_UNAVAILABLE</code>, <code>EMPTY_CART</code>. Never retry automatically.</td><td>Cash order opens the tracking screen.</td><td class="d">1</td><td class="dep">B-13</td></tr>
+</table>
+
+<h3>B4. Payment and orders (week 3 to 4)</h3>
+<table>
+  <tr><th>ID</th><th>Task</th><th>Done when</th><th>Days</th><th>Waits for</th></tr>
+  <tr><td class="id">B-15</td><td>Mobile money: call <code>orders/{id}/pay/</code>, show "Approve the payment on your phone".</td><td>Screen shows after placing an M-Pesa order.</td><td class="d">0.5</td><td class="dep">B-14</td></tr>
+  <tr><td class="id">B-16</td><td>Poll <code>orders/{id}/payment/</code> every 3 s for up to 2 minutes. Show Paid, Failed with "Try again", or "Still waiting".</td><td>Works with <code>simulate_mobile_money</code> and <code>--fail</code>.</td><td class="d">1</td><td class="dep">B-15</td></tr>
+  <tr><td class="id">B-17</td><td>Order tracking: status timeline (<code>status_history</code>), items, totals, payment label.</td><td>Matches the mockup.</td><td class="d">1</td><td class="dep">B-14</td></tr>
+  <tr><td class="id">B-18</td><td>Tracking refresh every 15 to 30 s; stop when the order is finished or the screen is hidden.</td><td>Owner's changes appear on the phone.</td><td class="d">0.5</td><td class="dep">B-17</td></tr>
+  <tr><td class="id">B-19</td><td>Cancel order while PENDING, with a reason (<code>orders/{id}/cancel/</code>). Button only when <code>allowed_actions</code> allows it.</td><td>Cancelled order shows "Not charged".</td><td class="d">0.5</td><td class="dep">B-17</td></tr>
+  <tr><td class="id">B-20</td><td>My orders: list, status filter, infinite scroll, open detail.</td><td>Newest first.</td><td class="d">1</td><td class="dep">B-17</td></tr>
+  <tr><td class="id">B-21</td><td>Refund notice: a paid order that is cancelled or rejected shows "Contact the store about your refund".</td><td>Shows only in that case.</td><td class="d">0.25</td><td class="dep">B-17</td></tr>
+  <tr><td class="id">B-22</td><td>Edge case test pass: closed store, sold out, lost network while placing an order, expired login.</td><td>No crash, clear message for each.</td><td class="d">1</td><td class="dep">week 4</td></tr>
+</table>
+
+<!-- ===================== DEVELOPER C ===================== -->
+<h2 class="break"><span class="person c">Developer C</span> Store owner dashboard</h2>
+<p>Week 1: layout and static pages with the sample JSON. Connect to the API once A-06 and A-12 are merged. Every page works in dark and light themes.</p>
+
+<h3>C1. Frame and shared pieces (week 1)</h3>
+<table>
+  <tr><th>ID</th><th>Task</th><th>Done when</th><th>Days</th><th>Waits for</th></tr>
+  <tr><td class="id">C-01</td><td>Layout: sidebar (Dashboard, Orders, Products, Low stock, Sales Analytics, Store Profile), top bar area, content area; works on laptop and tablet.</td><td>Matches the mockup.</td><td class="d">1</td><td class="dep">A-03</td></tr>
+  <tr><td class="id">C-02</td><td>Shared components: data table, pagination, status badge, date range picker, confirm dialog with reason, toast messages.</td><td>Used by orders and products.</td><td class="d">1.5</td><td class="dep">A-11</td></tr>
+  <tr><td class="id">C-03</td><td>Store switcher (<code>owner/stores/</code>); remember the chosen store.</td><td>Pages reload for the chosen store.</td><td class="d">0.5</td><td class="dep">C-01, A-12</td></tr>
+</table>
+
+<h3>C2. Dashboard (week 1 to 2)</h3>
+<table>
+  <tr><th>ID</th><th>Task</th><th>Done when</th><th>Days</th><th>Waits for</th></tr>
+  <tr><td class="id">C-04</td><td>Number cards: total orders, total sales, pending orders, low-stock count (<code>owner/stores/{id}/dashboard/</code>).</td><td>Numbers match the API.</td><td class="d">0.5</td><td class="dep">C-03</td></tr>
+  <tr><td class="id">C-05</td><td>Sales chart for the last 7 days (Recharts, from <code>sales_last_7_days</code>).</td><td>Matches the mockup.</td><td class="d">0.5</td><td class="dep">C-04</td></tr>
+  <tr><td class="id">C-06</td><td>Recent orders table and low-stock list on the dashboard.</td><td>Click opens order / product.</td><td class="d">0.5</td><td class="dep">C-04</td></tr>
+  <tr><td class="id">C-07</td><td>Refresh pending orders every 15 to 30 s; highlight new ones.</td><td>New customer order appears without reload.</td><td class="d">0.5</td><td class="dep">C-04</td></tr>
+</table>
+
+<h3>C3. Orders (week 2)</h3>
+<table>
+  <tr><th>ID</th><th>Task</th><th>Done when</th><th>Days</th><th>Waits for</th></tr>
+  <tr><td class="id">C-08</td><td>Orders list (<code>owner/stores/{id}/orders/</code>): status tabs, search by order number or customer, date range, sort, pagination.</td><td>All filters work together.</td><td class="d">1.5</td><td class="dep">C-02, C-03</td></tr>
+  <tr><td class="id">C-09</td><td>Order detail (<code>owner/orders/{id}/</code>): customer, address, items, totals, payment label, history timeline.</td><td>Matches the mockup.</td><td class="d">1</td><td class="dep">C-08</td></tr>
+  <tr><td class="id">C-10</td><td>Action buttons from <code>allowed_actions</code> only (<code>owner/orders/{id}/transition/</code>). Reason dialog for reject and cancel. On <code>INVALID_TRANSITION</code> reload the order.</td><td>Accept, prepare, ready, complete all work.</td><td class="d">1</td><td class="dep">C-09</td></tr>
+</table>
+
+<h3>C4. Products and low stock (week 3)</h3>
+<table>
+  <tr><th>ID</th><th>Task</th><th>Done when</th><th>Days</th><th>Waits for</th></tr>
+  <tr><td class="id">C-11</td><td>Products table (<code>owner/stores/{id}/products/</code>): image, name, price, stock, availability, search, category filter, pagination.</td><td>Matches the mockup.</td><td class="d">1</td><td class="dep">C-02</td></tr>
+  <tr><td class="id">C-12</td><td>Add product form with image upload (under 2 MB, compressed), category, price, stock, low-stock threshold, availability.</td><td>New product shows in the customer app.</td><td class="d">1</td><td class="dep">C-11</td></tr>
+  <tr><td class="id">C-13</td><td>Edit product form (<code>PATCH owner/products/{id}/</code>).</td><td>Changes saved.</td><td class="d">0.5</td><td class="dep">C-12</td></tr>
+  <tr><td class="id">C-14</td><td>Quick stock update in the table (<code>owner/products/{id}/stock/</code>).</td><td>Stock changes without opening the form.</td><td class="d">0.5</td><td class="dep">C-11</td></tr>
+  <tr><td class="id">C-15</td><td>Delete product with a confirm dialog.</td><td>Product disappears from both apps.</td><td class="d">0.25</td><td class="dep">C-11</td></tr>
+  <tr><td class="id">C-16</td><td>Low stock page (<code>?low_stock=true</code>) with a quick restock button.</td><td>Lists products at or below the alert level.</td><td class="d">0.5</td><td class="dep">C-14</td></tr>
+</table>
+
+<h3>C5. Sales analytics and extras (week 4)</h3>
+<table>
+  <tr><th>ID</th><th>Task</th><th>Done when</th><th>Days</th><th>Waits for</th></tr>
+  <tr><td class="id">C-17</td><td>Analytics page: date range picker and total cards (<code>owner/stores/{id}/analytics/</code>).</td><td>Changing dates updates the cards.</td><td class="d">0.5</td><td class="dep">C-02</td></tr>
+  <tr><td class="id">C-18</td><td>Daily sales line chart and top products bar chart.</td><td>Matches the mockup.</td><td class="d">1</td><td class="dep">C-17</td></tr>
+  <tr><td class="id">C-19</td><td>"This week vs last week": call analytics twice and show the difference.</td><td>Percentage shows with up / down arrow.</td><td class="d">0.5</td><td class="dep">C-17</td></tr>
+  <tr><td class="id">C-20</td><td>Orders "Export" button: CSV of the loaded rows, made in the browser.</td><td>File opens in Excel.</td><td class="d">0.5</td><td class="dep">C-08</td></tr>
+  <tr><td class="id">C-21</td><td>Light theme check on every page.</td><td>No unreadable text in either theme.</td><td class="d">0.5</td><td class="dep">A-25</td></tr>
+</table>
+
+<!-- ===================== TEAM ===================== -->
+<h2 class="break"><span class="person t">Everyone</span> Week 5: finish and demo</h2>
+<table>
+  <tr><th>ID</th><th>Task</th><th>Done when</th><th>Days</th></tr>
+  <tr><td class="id">T-01</td><td>Run the full demo script below on fresh seeded data, all three together.</td><td>No step fails.</td><td class="d">0.5</td></tr>
+  <tr><td class="id">T-02</td><td>Bug fixing from the demo run and from each other's testing.</td><td>No open "must fix" bugs.</td><td class="d">2</td></tr>
+  <tr><td class="id">T-03</td><td>Build the Android APK (Expo EAS build) and install it on two phones.</td><td>APK runs against the server URL.</td><td class="d">0.5</td></tr>
+  <tr><td class="id">T-04</td><td>Production build of the dashboard (<code>npm run build</code>).</td><td>Build folder serves correctly.</td><td class="d">0.25</td></tr>
+  <tr><td class="id">T-05</td><td>A short README for each app: how to install, run, and set the API URL.</td><td>A new teammate can run it alone.</td><td class="d">0.5</td></tr>
+</table>
+
+<h3>Demo script (what the finished product must do)</h3>
+<ol>
+  <li>Owner signs up on the dashboard, creates a store, uploads a logo, adds products.</li>
+  <li>Customer signs up on the phone, allows location, sees the store on Home, opens it, adds two products, checks out with M-Pesa.</li>
+  <li>Run <code>simulate_mobile_money</code>; the payment screen changes to "Paid".</li>
+  <li>The owner's bell shows the new order; the pending count goes up.</li>
+  <li>Owner accepts, prepares, marks ready and completes. The customer's tracking screen follows each step and the bell shows each update.</li>
+  <li>Stock goes down; a low-stock alert appears when a product reaches its alert level.</li>
+  <li>Dashboard and analytics show the sale.</li>
+  <li>Customer uses "Forgot password"; the code is read from the backend log.</li>
+</ol>
+
+<h2>Week-by-week view</h2>
+<table>
+  <tr><th>Week</th><th><span class="person a">A</span></th><th><span class="person b">B</span></th><th><span class="person c">C</span></th></tr>
+  <tr><td>1</td><td>A-01 to A-15</td><td>B-01, B-02, B-03 to B-08 with sample JSON</td><td>C-01 to C-07 with sample JSON</td></tr>
+  <tr><td>2</td><td>A-16 to A-22, A-26, A-27</td><td>Connect B-03 to B-08; B-09 to B-11</td><td>C-04 to C-07 connected; C-08 to C-10</td></tr>
+  <tr><td>3</td><td>A-23 to A-25, A-28 to A-30</td><td>B-12 to B-17</td><td>C-11 to C-16</td></tr>
+  <tr><td>4</td><td>A-31; help B and C</td><td>B-18 to B-22</td><td>C-17 to C-21</td></tr>
+  <tr><td>5</td><td colspan="3">T-01 to T-05</td></tr>
+</table>
+
+<h2>Team rules</h2>
+<ul>
+  <li><b>Git:</b> nobody pushes to <code>main</code>. One branch per task (<code>feat/B-11-cart-screen</code>), a small pull request, one review by a teammate, then merge.</li>
+  <li><b>Commits:</b> short and clear, for example <code>feat(customer): add cart screen</code>.</li>
+  <li><b>Secrets:</b> never commit <code>.env</code>, demo passwords, tokens or the payment secret. App env files hold only the API URL.</li>
+  <li><b>Shared code:</b> only A changes <code>packages/api</code> and <code>packages/ui-tokens</code>; others ask A or open a small pull request.</li>
+  <li><b>Backend:</b> nobody edits the backend. Send questions to the project lead with the request, the response and the <code>error.code</code>.</li>
+  <li><b>Every morning:</b> pull <code>main</code>; if <code>docs/openapi.yaml</code> changed, run <code>npm run gen:api</code>.</li>
+  <li><b>Meetings:</b> 15-minute check-in every day; demo on seeded data every Friday.</li>
+</ul>
+
+<h2>Definition of done (every task)</h2>
+<ul>
+  <li>Uses the generated API types; no hand-written response types.</li>
+  <li>Has loading, empty, error and success states.</li>
+  <li>Handles the error codes the endpoint can return; field errors appear under the right input.</li>
+  <li>Never calculates prices, totals or statuses; shows the values the server sends.</li>
+  <li>Buttons that call the API are disabled while the request is running.</li>
+  <li>Checked against the mockup and the "must / must not" list in the handoff.</li>
+  <li><code>npm run lint</code> and <code>npm run typecheck</code> pass; reviewed by a teammate.</li>
+</ul>
+
+<h2>Mockup items not in the backend yet</h2>
+<p>Build the screens without these until the project lead decides. Do not show fake data.</p>
+<table>
+  <tr><th>Mockup item</th><th>What to do for now</th></tr>
+  <tr><td>Store rating "4.5 (120)", favourite heart, opening hours</td><td>Hide (needs database changes).</td></tr>
+  <tr><td>Card payment</td><td>Hide; offer Cash, M-Pesa, Tigo Pesa, Airtel Money.</td></tr>
+  <tr><td>"Popular products" on Home</td><td>Show nearby stores instead.</td></tr>
+  <tr><td>Payment methods donut chart</td><td>Hide.</td></tr>
+  <tr><td>Notifications / low-stock toggles in settings</td><td>Hide; only "Accept new orders" (OPEN / CLOSED) works.</td></tr>
+  <tr><td>One search for orders, products and customers</td><td>Search inside the current page's list.</td></tr>
+</table>
+
+</body>
+</html>

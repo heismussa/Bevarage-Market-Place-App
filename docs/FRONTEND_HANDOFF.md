@@ -47,8 +47,27 @@ Users log in with **phone + password**. There are no sessions or cookies.
    `{"refresh": "<jwt>"}`. It returns only a new `{"access": "<jwt>"}`; keep the same
    refresh token. Retry the original call once.
 5. If the refresh call also returns `401 TOKEN_INVALID`, the session is over: clear the
-   tokens and go to the login screen.
+   tokens and go to the login screen. This also happens on every device as soon as the
+   password is changed or reset.
 6. Logout is client-side only: delete both tokens. There is no logout endpoint.
+
+### Forgot password and change password
+
+| Step | Call | Response |
+| --- | --- | --- |
+| 1. Ask for a code | `POST auth/password/reset/` `{"phone": "+255712345002"}` | Always `200 {"detail": "If this phone number is registered, a reset code has been sent by SMS."}`, so the screen never reveals whether the number has an account. |
+| 2. Set the new password | `POST auth/password/reset/confirm/` `{"phone": "+255712345002", "code": "482913", "new_password": "..."}` | `200 {"detail": "Your password has been reset. Log in with the new password."}` |
+| Change while logged in | `POST auth/password/change/` `{"current_password": "...", "new_password": "..."}` | `200 {"refresh": "<jwt>", "access": "<jwt>"}`. Replace the stored tokens; other devices are logged out. |
+
+- The code has 6 digits and works for 10 to 20 minutes (`PASSWORD_RESET_CODE_MINUTES`).
+  It works once: after the password changes, it is dead.
+- A wrong or expired code is `400 VALIDATION_ERROR` on `code`, and a weak password is
+  `400 VALIDATION_ERROR` on `new_password`. A wrong current password is on
+  `current_password`.
+- Limits per phone number: 3 code requests and 10 confirm attempts per hour by default.
+  Beyond that you get `429 THROTTLED`; show the `details.wait_seconds`.
+- **SMS is not connected yet.** With `SMS_BACKEND=console` the code is written to the
+  backend log (`docker compose logs backend`). That is how to test it locally.
 
 After login, call `GET auth/me/` to learn the user's `role` and route to the customer
 or store-owner app.
@@ -84,8 +103,8 @@ cannot tell whether it exists.
 | Area | Endpoints | Anonymous | Customer | Store owner | Admin |
 | --- | --- | :-: | :-: | :-: | :-: |
 | Health | `health/` | yes | yes | yes | yes |
-| Auth | `auth/register/`, `auth/login/`, `auth/refresh/` | yes | yes | yes | yes |
-| Profile | `auth/me/` (GET, PATCH) | | yes | yes | yes |
+| Auth | `auth/register/`, `auth/login/`, `auth/refresh/`, `auth/password/reset/`, `auth/password/reset/confirm/` | yes | yes | yes | yes |
+| Profile | `auth/me/` (GET, PATCH), `auth/password/change/` | | yes | yes | yes |
 | Catalog (read only) | `categories/`, `stores/`, `stores/{id}/`, `stores/{store_id}/products/`, `products/{id}/` | yes | yes | yes | yes |
 | Addresses | `addresses/`, `addresses/{id}/`, `addresses/{id}/set-default/` | | yes | | |
 | Cart | `cart/`, `cart/items/`, `cart/items/{id}/` | | yes | | |
@@ -153,14 +172,14 @@ Every error has the same body:
 | 400 | `PARSE_ERROR` | The body is not valid JSON. | Treat as a bug; generic "Something went wrong". |
 | 401 | `NOT_AUTHENTICATED` | No `Authorization` header on a protected call. | Go to login. |
 | 401 | `AUTHENTICATION_FAILED` | Wrong phone or password at login. | "Wrong phone number or password." Do not try a refresh. |
-| 401 | `TOKEN_INVALID` | Access or refresh token expired, malformed or revoked. | Refresh once and retry; if refresh fails, log out. |
+| 401 | `TOKEN_INVALID` | Access or refresh token expired or malformed, or the password was changed or reset since it was issued. | Refresh once and retry; if refresh fails, log out. |
 | 401 | `INVALID_SIGNATURE` | Payment webhook signature is wrong. Server-to-server only. | Never seen by the app. |
 | 403 | `PERMISSION_DENIED` | The user's role may not call this endpoint (e.g. a store owner opening the cart). | Route the user to their own app; this is a navigation bug. |
 | 404 | `NOT_FOUND` | The object does not exist **or belongs to someone else**; also unknown URLs. | "Not found" screen, or refresh the list it came from. |
 | 405 | `METHOD_NOT_ALLOWED` | Wrong HTTP method. | Bug. |
 | 406 | `NOT_ACCEPTABLE` | Unsupported `Accept` header. | Bug; send `Accept: application/json` or nothing. |
 | 415 | `UNSUPPORTED_MEDIA_TYPE` | Wrong `Content-Type`. | Bug; JSON bodies use `application/json`, uploads `multipart/form-data`. |
-| 429 | `THROTTLED` | Too many requests. Today only `orders/{id}/pay/` (5 per minute per customer). | "Please wait `details.wait_seconds` seconds"; disable the button for that long. |
+| 429 | `THROTTLED` | Too many requests: `orders/{id}/pay/` (5 per minute per customer), `auth/password/reset/` (3 per hour per phone), `auth/password/reset/confirm/` (10 per hour per phone). | "Please wait `details.wait_seconds` seconds"; disable the button for that long. |
 | 409 | `CONFLICT` | Generic conflict with the current state (fallback). | Reload the screen's data and show `message`. |
 | 409 | `CART_STORE_CONFLICT` | Adding a product from a different store than the one in the cart. `details`: `cart_store_id`, `cart_store_name`, `product_store_id`, `product_store_name`. | Dialog: "Your cart has items from {cart_store_name}. Start a new cart?" On yes, repeat the call with `?replace=true`. |
 | 409 | `PRODUCT_UNAVAILABLE` | Product deleted, its category hidden, or the owner marked it UNAVAILABLE. Cart: `details` has `product_id`, `store_id`. Checkout: see `details.problems`. | Show `message`; remove or grey out the item. |
@@ -301,6 +320,24 @@ Payment events: a successful mobile-money payment notifies the customer
 (`PAYMENT_SUCCESS`) and the store owner (`ORDER_RECEIVED`); a failed one notifies only
 the customer (`PAYMENT_FAILED`).
 
+The customer is notified of every status change, including a cancel they made
+themselves. `LOW_STOCK` also fires when the owner's own edit (stock or threshold) takes
+a product from above its threshold to at or below it.
+
+### Payment status labels
+
+Show these labels rather than the raw values:
+
+| `payment_status` | Cash order | Mobile-money order |
+| --- | --- | --- |
+| `PENDING` | "Pay on delivery" | "Not paid yet" (show a Pay button) |
+| `PROCESSING` | | "Waiting for approval on your phone" |
+| `SUCCESS` | "Paid" | "Paid" |
+| `FAILED` | | "Payment failed" (show "Try again") |
+| `CANCELLED` | "Not charged" | "Not charged" |
+
+`CANCELLED` means the order was cancelled or rejected before any money was taken.
+
 **Never hard-code which buttons to show.** Order detail responses include
 `allowed_actions` for the current user; render exactly those.
 
@@ -317,6 +354,7 @@ the customer (`PAYMENT_FAILED`).
 | App start with saved tokens | `GET auth/me/` (refresh on `TOKEN_INVALID`); route by `role` |
 | Sign up | `POST auth/register/`, then `POST auth/login/` |
 | Log in | `POST auth/login/` |
+| Forgot password | `POST auth/password/reset/`, then `POST auth/password/reset/confirm/`, then log in |
 
 Example of a wrong password at login (`401`):
 
@@ -610,6 +648,7 @@ Too late (`409`):
 | Need | Call |
 | --- | --- |
 | Profile | `GET auth/me/`, `PATCH auth/me/` (`full_name`, `phone`, `email`; `role` cannot change) |
+| Change password | `POST auth/password/change/`, then store the returned tokens |
 | Addresses | `GET addresses/`, `POST addresses/`, `GET/PATCH/DELETE addresses/{id}/` |
 | Make default | `POST addresses/{id}/set-default/` |
 
@@ -785,8 +824,8 @@ categories come from `GET categories/` (they cannot be created in the app).
 
 `GET owner/stores/{store_id}/products/?low_stock=true` lists products with
 `stock_quantity <= low_stock_threshold` (`is_low_stock: true`). The dashboard shows the
-top 10, and owners get a `LOW_STOCK` notification each time a customer order pushes a
-product to or below its threshold.
+top 10, and owners get a `LOW_STOCK` notification each time a customer order or their
+own edit pushes a product to or below its threshold.
 
 #### Sales and analytics
 
@@ -872,8 +911,17 @@ Same endpoints as the customer. Owners receive `ORDER_RECEIVED` ("New order …"
 | Promo codes, discounts, loyalty points, tips | Not supported | Hide. |
 | Scheduled delivery | Not supported | Hide. |
 | Favourites or re-order | Not supported | Hide, or re-add items to the cart from an old order's `items` one by one. |
-| Forgot password, change password, phone OTP | Not supported (no endpoint) | Hide; tell users to contact support. |
-| Logout from all devices | No token revocation | Delete local tokens on logout. |
+| Phone verification at sign-up (OTP) | Not supported; only password reset uses an SMS code | Hide. |
+| Real SMS delivery of reset codes | Console backend only: codes appear in the backend log | Build the screens; in development read the code from `docker compose logs backend`. |
+| Logout from all devices | No dedicated button; changing the password logs out every other device | Delete local tokens on logout. |
+| "Popular products" across stores on the home screen | Products are listed per store; no popularity endpoint for customers | Show the stores list on home; inside a store sort products by `name` or `price`. |
+| Location chip such as "Delivers to Arusha" | No delivery-zone check; stores have `city` and `area`, and distance comes from `lat`/`lng` | Show the device location or a chosen city; send `lat`/`lng` (and optionally `city`) to `stores/`. |
+| Generic "Mobile Money" option | The customer must choose MPESA, TIGO_PESA or AIRTEL_MONEY | Show the three providers as separate options. |
+| Trend percentages such as "+12% vs last week" | The dashboard has no comparison | Hide, or call `owner/analytics/` twice (this week and last week) and compute it. |
+| "Payment methods" donut chart | No breakdown by payment method | Hide. |
+| Store settings toggles (accept new orders, notifications, low-stock alerts) | Only `status` OPEN/CLOSED exists | Map "Accept new orders" to OPEN/CLOSED; hide the other toggles. |
+| Orders "Export" button | No export endpoint | Build a CSV in the browser from the loaded pages, or hide. |
+| One search bar for orders, products and customers | Each list has its own `search` | Search the list on the current page only. |
 | Delete account | Not supported | Hide. |
 | Category management, store approval, admin screens | Django admin only (`/admin/`); the API has just `admin/orders/{id}/cancel/` | Do not build admin screens yet. |
 

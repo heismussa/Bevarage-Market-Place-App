@@ -1,6 +1,10 @@
+import logging
+
 from django.db import transaction
 
-from notifications.models import Notification
+from notifications.models import Notification, NotificationType
+
+logger = logging.getLogger(__name__)
 
 
 def create_notification(user_id, notification_type, title, message, order=None):
@@ -19,6 +23,28 @@ def create_notification(user_id, notification_type, title, message, order=None):
         ),
         robust=True,
     )
+
+
+def notify_if_became_low(product, before_stock, before_threshold):
+    """Tell the store owner when a change takes a product from above its low-stock
+    threshold to at or below it: once per crossing, from orders or the owner's edits.
+
+    product must hold the new stock and threshold, and have its store loaded.
+    """
+    was_low = before_stock <= before_threshold
+    is_low = product.stock_quantity <= product.low_stock_threshold
+    if was_low or not is_low:
+        return
+    try:
+        create_notification(
+            product.store.owner_id,
+            NotificationType.LOW_STOCK,
+            "Low stock",
+            f"{product.name} is down to {product.stock_quantity} "
+            f"(alert at {product.low_stock_threshold}).",
+        )
+    except Exception:
+        logger.exception("Could not send the low stock notification for %s", product.pk)
 
 
 def mark_read(notification):

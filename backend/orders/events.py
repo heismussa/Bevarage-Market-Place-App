@@ -9,7 +9,8 @@ saved. Who is told what:
 - PAYMENT_FAILED: the customer.
 - ORDER_<status>: the customer. A cancellation not made by the store owner also tells
   the store owner, if the store could see the order.
-- LOW_STOCK: the store owner, once each time stock drops to or below the threshold.
+
+LOW_STOCK is sent from notifications.services.notify_if_became_low.
 """
 
 import logging
@@ -112,22 +113,3 @@ def _is_cash(order):
 
 def _owner_can_see(order):
     return order.payment_status == PaymentStatus.SUCCESS or _is_cash(order)
-
-
-def notify_low_stock(store_owner_id, products):
-    """products: (product, remaining) pairs that just dropped to or below their threshold."""
-    try:
-        for product, remaining in products:
-            create_notification(
-                store_owner_id,
-                NotificationType.LOW_STOCK,
-                "Low stock",
-                f"{product.name} is down to {remaining} (alert at {product.low_stock_threshold}).",
-            )
-    except Exception:
-        logger.exception("Could not send low stock notifications")
-
-
-def crossed_low_stock(product, before, after):
-    """True only when this change moves stock from above the threshold to at/below it."""
-    return before > product.low_stock_threshold >= after
