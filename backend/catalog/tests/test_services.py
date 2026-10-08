@@ -1,8 +1,10 @@
+from decimal import Decimal
+
 from django.test import TestCase
 
 from catalog import services
-from catalog.models import AvailabilityStatus, Product
-from core.testing.factories import ProductFactory
+from catalog.models import AvailabilityStatus, Product, ProductUnit
+from core.testing.factories import CategoryFactory, ProductFactory, StoreFactory
 
 AVAILABLE = AvailabilityStatus.AVAILABLE
 OUT_OF_STOCK = AvailabilityStatus.OUT_OF_STOCK
@@ -60,15 +62,13 @@ class StockServiceTests(TestCase):
         self.assertEqual(Product.objects.get(pk=product.pk).stock_quantity, 12)
 
     def test_create_with_zero_stock_is_out_of_stock(self):
-        template = ProductFactory.build()
-
         product = services.create_product(
-            template.store if template.store.pk else ProductFactory().store,
+            StoreFactory(),
             {
-                "category": ProductFactory().category,
+                "category": CategoryFactory(),
                 "name": "Zero stock",
-                "unit": template.unit,
-                "price": template.price,
+                "unit": ProductUnit.CAN,
+                "price": Decimal("1000.00"),
                 "stock_quantity": 0,
             },
         )

@@ -224,7 +224,8 @@ class OwnerProductQuerysetMixin(OwnerScopedQuerysetMixin):
         examples=[
             OpenApiExample("Change price", value={"price": "1700.00"}, request_only=True),
             OpenApiExample(
-                "Hide from customers", value={"availability_status": "UNAVAILABLE"},
+                "Hide from customers",
+                value={"availability_status": "UNAVAILABLE"},
                 request_only=True,
             ),
         ],
@@ -232,7 +233,9 @@ class OwnerProductQuerysetMixin(OwnerScopedQuerysetMixin):
     delete=extend_schema(
         tags=["owner-products"],
         summary="Delete my product (soft delete)",
-        description="Sets deleted_at. The product disappears from every list; order history keeps it.",
+        description=(
+            "Sets deleted_at. The product disappears from every list; order history keeps it."
+        ),
         responses={204: None, **standard_errors(401, 403, 404)},
     ),
 )

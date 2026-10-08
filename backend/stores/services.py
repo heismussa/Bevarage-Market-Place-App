@@ -1,7 +1,7 @@
 import math
 
 from django.db import transaction
-from django.db.models import ExpressionWrapper, F, FloatField, Value
+from django.db.models import Case, ExpressionWrapper, F, FloatField, Q, Value, When
 from django.db.models.functions import ASin, Cast, Cos, Least, Power, Radians, Sin, Sqrt
 
 from stores.models import Store
@@ -27,9 +27,14 @@ def annotate_distance(queryset, latitude, longitude):
     # Floating-point error can push sqrt(a) a hair above 1, which ASIN rejects.
     central_angle = ASin(Least(Sqrt(half_chord), _float(1)))
 
+    # Postgres LEAST() skips NULLs, so missing coordinates must be short-circuited explicitly.
     return queryset.annotate(
-        distance=ExpressionWrapper(
-            _float(2 * EARTH_RADIUS_KM) * central_angle, output_field=FloatField()
+        distance=Case(
+            When(Q(latitude__isnull=True) | Q(longitude__isnull=True), then=Value(None)),
+            default=ExpressionWrapper(
+                _float(2 * EARTH_RADIUS_KM) * central_angle, output_field=FloatField()
+            ),
+            output_field=FloatField(),
         )
     )
 

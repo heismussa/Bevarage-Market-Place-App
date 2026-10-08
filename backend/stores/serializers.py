@@ -21,9 +21,7 @@ class CoordinatesQuerySerializer(serializers.Serializer):
 
     def validate(self, attrs):
         if ("lat" in attrs) != ("lng" in attrs):
-            raise serializers.ValidationError(
-                {"lat": ["lat and lng must be sent together."]}
-            )
+            raise serializers.ValidationError({"lat": ["lat and lng must be sent together."]})
         return attrs
 
 

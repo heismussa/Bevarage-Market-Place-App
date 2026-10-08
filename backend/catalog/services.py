@@ -71,12 +71,8 @@ def update_product(product, data):
 def set_stock(product, stock_quantity):
     product = Product.objects.select_for_update().get(pk=product.pk)
     product.stock_quantity = stock_quantity
-    product.availability_status = compute_availability(
-        product.availability_status, stock_quantity
-    )
-    return _save(
-        product, update_fields=["stock_quantity", "availability_status", "updated_at"]
-    )
+    product.availability_status = compute_availability(product.availability_status, stock_quantity)
+    return _save(product, update_fields=["stock_quantity", "availability_status", "updated_at"])
 
 
 @transaction.atomic

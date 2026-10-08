@@ -1,5 +1,10 @@
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema, extend_schema_view
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiParameter,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework import generics, serializers
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny
@@ -187,9 +192,7 @@ class OwnerStoreListCreateView(OwnerScopedQuerysetMixin, generics.ListCreateAPIV
         request=OwnerStoreSerializer,
         responses={200: OwnerStoreSerializer, **standard_errors(400, 401, 403, 404)},
         examples=[
-            OpenApiExample(
-                "Open the store", value={"status": "OPEN"}, request_only=True
-            ),
+            OpenApiExample("Open the store", value={"status": "OPEN"}, request_only=True),
             OpenApiExample("Updated", value=OWNER_STORE_EXAMPLE, response_only=True),
         ],
     ),
