@@ -58,7 +58,7 @@ class CartMutationTests(TestCase):
                 ProductFactory(
                     stock_quantity=0, availability_status=AvailabilityStatus.OUT_OF_STOCK
                 ),
-                ErrorCode.PRODUCT_UNAVAILABLE,
+                ErrorCode.INSUFFICIENT_STOCK,
             ),
             (
                 ProductFactory(category__status=CategoryStatus.INACTIVE),
@@ -210,6 +210,43 @@ class PriceCartTests(TestCase):
             sorted(w["code"] for w in summary.warnings),
             ["INSUFFICIENT_STOCK", "PRODUCT_UNAVAILABLE"],
         )
+        self.assertFalse(lines[low.pk].counted_in_total)
+        self.assertFalse(lines[hidden.pk].counted_in_total)
+        self.assertEqual(summary.subtotal, Decimal("0.00"))
+        self.assertEqual(summary.delivery_fee, Decimal("0.00"))
+        self.assertEqual(summary.total, Decimal("0.00"))
+
+    def test_only_buyable_lines_count_toward_totals(self):
+        cola = ProductFactory(store=self.store, price=Decimal("1500.00"))
+        fanta = ProductFactory(store=self.store, price=Decimal("1500.00"))
+        services.add_item(self.customer, cola.pk, 2)
+        services.add_item(self.customer, fanta.pk, 1)
+        fanta.availability_status = AvailabilityStatus.UNAVAILABLE
+        fanta.save()
+
+        summary = self.summary()
+
+        lines = {line.item.product_id: line for line in summary.lines}
+        self.assertTrue(lines[cola.pk].counted_in_total)
+        self.assertFalse(lines[fanta.pk].counted_in_total)
+        self.assertEqual(lines[fanta.pk].line_total, Decimal("1500.00"))
+        self.assertEqual(summary.subtotal, Decimal("3000.00"))
+        self.assertEqual(summary.delivery_fee, Decimal("2500.00"))
+        self.assertEqual(summary.total, Decimal("5500.00"))
+
+    def test_sold_out_line_reports_insufficient_stock(self):
+        cola = ProductFactory(store=self.store, stock_quantity=2)
+        services.add_item(self.customer, cola.pk, 1)
+        cola.stock_quantity = 0
+        cola.availability_status = AvailabilityStatus.OUT_OF_STOCK
+        cola.save()
+
+        summary = self.summary()
+
+        self.assertFalse(summary.lines[0].available)
+        self.assertEqual(summary.lines[0].max_available, 0)
+        self.assertEqual(summary.warnings[0]["code"], "INSUFFICIENT_STOCK")
+        self.assertEqual(summary.warnings[0]["message"], f"{cola.name} is sold out.")
 
     def test_closed_store_warning(self):
         product = ProductFactory(store=self.store)
@@ -222,3 +259,4 @@ class PriceCartTests(TestCase):
         self.assertEqual(summary.warnings[0]["code"], "STORE_CLOSED")
         self.assertIsNone(summary.warnings[0]["item_id"])
         self.assertFalse(summary.lines[0].available)
+        self.assertEqual(summary.total, Decimal("0.00"))

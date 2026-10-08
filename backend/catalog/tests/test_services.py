@@ -19,7 +19,7 @@ class ComputeAvailabilityTests(TestCase):
             (OUT_OF_STOCK, 0, OUT_OF_STOCK),
             (OUT_OF_STOCK, 1, AVAILABLE),
             (UNAVAILABLE, 3, UNAVAILABLE),
-            (UNAVAILABLE, 0, OUT_OF_STOCK),
+            (UNAVAILABLE, 0, UNAVAILABLE),
         )
         for current, stock, expected in cases:
             with self.subTest(current=current, stock=stock):
@@ -32,8 +32,11 @@ class SyncAvailabilityTests(TestCase):
             "drained": ProductFactory(availability_status=AVAILABLE),
             "restocked": ProductFactory(availability_status=AVAILABLE),
             "hidden": ProductFactory(availability_status=UNAVAILABLE),
+            "hidden_drained": ProductFactory(availability_status=UNAVAILABLE),
         }
-        Product.objects.filter(pk=rows["drained"].pk).update(stock_quantity=0)
+        Product.objects.filter(pk__in=[rows["drained"].pk, rows["hidden_drained"].pk]).update(
+            stock_quantity=0
+        )
         Product.objects.filter(pk=rows["restocked"].pk).update(
             availability_status=OUT_OF_STOCK, stock_quantity=7
         )
@@ -46,7 +49,12 @@ class SyncAvailabilityTests(TestCase):
         }
         self.assertEqual(
             statuses,
-            {"drained": OUT_OF_STOCK, "restocked": AVAILABLE, "hidden": UNAVAILABLE},
+            {
+                "drained": OUT_OF_STOCK,
+                "restocked": AVAILABLE,
+                "hidden": UNAVAILABLE,
+                "hidden_drained": UNAVAILABLE,
+            },
         )
 
 

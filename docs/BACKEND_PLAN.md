@@ -11,7 +11,7 @@ describes the API and business rules built on top of it.
 | 0 | Shared plumbing | Done |
 | 1 | Store and product APIs | Done |
 | 2 | Addresses and cart | Done |
-| 3 | Orders and state machine | Not started |
+| 3 | Orders and state machine | Done |
 | 4 | Store order management and dashboard | Not started |
 | 5 | Payments | Not started |
 | 6 | Notifications (in-app only) | Not started |
@@ -80,7 +80,8 @@ Store owner:
 Rules:
 
 - Availability sync: stock 0 makes a product OUT_OF_STOCK; stock above 0 on an
-  OUT_OF_STOCK product makes it AVAILABLE; UNAVAILABLE is only set by the owner.
+  OUT_OF_STOCK product makes it AVAILABLE. UNAVAILABLE is set and cleared only by the
+  owner: stock changes (including orders and restocks) never change it.
 - Images: JPEG, PNG or WebP, max 2 MB, checked with Pillow. Price > 0. Category must
   be ACTIVE. Unit is required.
 - Soft-deleted products never appear in any list.
@@ -109,7 +110,10 @@ Rules:
   CART_STORE_CONFLICT unless `?replace=true`, which empties the cart first. An empty
   cart has `store = NULL`.
 - Validation: product not deleted and AVAILABLE, store active and OPEN,
-  1 <= quantity <= stock. Codes: PRODUCT_UNAVAILABLE, STORE_CLOSED, INSUFFICIENT_STOCK.
+  1 <= quantity <= stock. Codes: PRODUCT_UNAVAILABLE (hidden, deleted or inactive
+  category), STORE_CLOSED, INSUFFICIENT_STOCK (including sold out, `max_available: 0`).
+- Totals count only lines the customer can buy now (`counted_in_total`). The delivery
+  fee is 0 when no line counts.
 - Adding a product already in the cart increases its quantity.
 - GET returns the store summary, items (name, image, unit, current price, quantity,
   line_total, price_changed, available, max_available), subtotal, delivery_fee, total
@@ -165,6 +169,10 @@ Customer endpoints:
 - `GET /api/v1/orders/{id}/` (items, status history, payment status)
 - `POST /api/v1/orders/{id}/cancel/` `{reason?}` (PENDING only)
 
+Admin endpoint (added by decision on 2026-10-08):
+
+- `POST /api/v1/admin/orders/{id}/cancel/` `{reason}` cancels any non-terminal order.
+
 Done when every legal transition passes and every illegal one is rejected; a threaded
 concurrency test proves two customers cannot both buy the last unit; price tampering
 has no effect; stock is restored exactly once; customers cannot read others' orders.
@@ -211,6 +219,21 @@ cancelled.
 - `GET /api/v1/notifications/` (filter is_read),
   `GET /api/v1/notifications/unread-count/`,
   `POST /api/v1/notifications/{id}/read/`, `POST /api/v1/notifications/read-all/`.
+
+## Decisions log
+
+- **2026-10-08, availability:** UNAVAILABLE always stays UNAVAILABLE until the owner
+  changes it.
+- **2026-10-08, cart totals:** only buyable lines count toward the subtotal.
+- **2026-10-08, store logo:** keep the API field and column name `logo`.
+- **2026-10-08, refunds:** paying is only possible for what the store has, so refunds
+  are expected mainly for overpayment or double payment. Revisit in Stage 5.
+- **2026-10-08, admin cancel:** built as an API endpoint for a future admin screen.
+
+## Follow-ups after all stages
+
+- **Remind the developer:** they have questions about the admin cancel endpoint and
+  admin screens. Raise this once Stages 0-7 are done.
 
 ## Stage 7: Frontend handoff
 

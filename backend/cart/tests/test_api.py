@@ -59,6 +59,7 @@ class CartApiTests(ApiTestCase):
         self.assertEqual(line["line_total"], "3000.00")
         self.assertEqual(line["max_available"], 10)
         self.assertTrue(line["available"])
+        self.assertTrue(line["counted_in_total"])
         self.assertFalse(line["price_changed"])
         self.assertEqual(response.data["item_count"], 2)
         self.assertEqual(response.data["subtotal"], "3000.00")
@@ -131,6 +132,22 @@ class CartApiTests(ApiTestCase):
         self.assertEqual(line["unit_price"], "1750.00")
         self.assertEqual(data["subtotal"], "3500.00")
         self.assertEqual(data["warnings"][0]["code"], "PRICE_CHANGED")
+
+    def test_unavailable_line_is_left_out_of_totals(self):
+        fanta = ProductFactory(store=self.store, price=Decimal("1500.00"))
+        self.add(self.cola, 2)
+        self.add(fanta)
+        fanta.availability_status = "UNAVAILABLE"
+        fanta.save()
+
+        data = self.client.get(CART_URL).data
+
+        self.assertEqual(data["subtotal"], "3000.00")
+        self.assertEqual(data["total"], "5000.00")
+        self.assertEqual(
+            [line["counted_in_total"] for line in data["items"]],
+            [True, False],
+        )
 
     def test_patch_quantity(self):
         item_id = self.add(self.cola).data["items"][0]["id"]

@@ -11,10 +11,13 @@ DUPLICATE_NAME_MESSAGE = "This store already has a product with this name."
 def compute_availability(current_status, stock_quantity):
     """Availability after a stock change.
 
+    - UNAVAILABLE never changes: only the owner sets or clears it
     - stock 0 -> OUT_OF_STOCK
     - stock > 0 and previously OUT_OF_STOCK -> AVAILABLE
-    - otherwise unchanged (UNAVAILABLE is only ever set by the owner)
+    - otherwise unchanged
     """
+    if current_status == AvailabilityStatus.UNAVAILABLE:
+        return current_status
     if stock_quantity <= 0:
         return AvailabilityStatus.OUT_OF_STOCK
     if current_status == AvailabilityStatus.OUT_OF_STOCK:
@@ -26,6 +29,10 @@ def sync_availability(queryset):
     """Apply compute_availability in one UPDATE. For bulk stock changes made with F()."""
     return queryset.update(
         availability_status=Case(
+            When(
+                availability_status=AvailabilityStatus.UNAVAILABLE,
+                then=Value(AvailabilityStatus.UNAVAILABLE),
+            ),
             When(stock_quantity__lte=0, then=Value(AvailabilityStatus.OUT_OF_STOCK)),
             When(
                 Q(availability_status=AvailabilityStatus.OUT_OF_STOCK) & Q(stock_quantity__gt=0),

@@ -268,6 +268,23 @@ class OwnerProductApiTests(TemporaryMediaMixin, ApiTestCase):
 
         self.assertEqual(response.data["availability_status"], UNAVAILABLE)
 
+    def test_unavailable_survives_selling_out_and_restocking(self):
+        self.client_a.patch(
+            product_url(self.product_a), {"availability_status": UNAVAILABLE}, format="json"
+        )
+
+        for quantity in (0, 24):
+            with self.subTest(stock_quantity=quantity):
+                response = self.client_a.patch(
+                    stock_url(self.product_a), {"stock_quantity": quantity}, format="json"
+                )
+                self.assertEqual(response.data["availability_status"], UNAVAILABLE)
+
+        response = self.client_a.patch(
+            product_url(self.product_a), {"availability_status": AVAILABLE}, format="json"
+        )
+        self.assertEqual(response.data["availability_status"], AVAILABLE)
+
     def test_stock_validation(self):
         for body in ({"stock_quantity": -1}, {}, {"stock_quantity": "lots"}):
             with self.subTest(body=body):

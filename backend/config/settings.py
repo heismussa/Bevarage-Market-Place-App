@@ -131,5 +131,10 @@ SPECTACULAR_SETTINGS = {
     "ENUM_NAME_OVERRIDES": {
         "UserRoleEnum": "accounts.models.UserRole",
         "RegistrationRoleEnum": "accounts.serializers.REGISTRATION_ROLE_CHOICES",
+        "StoreStatusEnum": "stores.models.StoreStatus",
+        "OrderStatusEnum": "orders.models.OrderStatus",
+        "PaymentStatusEnum": "payments.choices.PaymentStatus",
+        "PaymentMethodEnum": "payments.choices.PaymentMethod",
+        "CheckoutPaymentMethodEnum": "payments.choices.CHECKOUT_PAYMENT_METHOD_CHOICES",
     },
 }

@@ -90,6 +90,8 @@ The full endpoint list, with examples, is in the API docs. A short map by area:
 | Owner products | `owner/stores/{store_id}/products/`, `owner/products/{id}/`, `owner/products/{id}/stock/` | Store owner |
 | Addresses | `addresses/`, `addresses/{id}/`, `addresses/{id}/set-default/` | Customer |
 | Cart | `cart/`, `cart/items/`, `cart/items/{id}/` | Customer |
+| Orders | `orders/`, `orders/{id}/`, `orders/{id}/cancel/` | Customer |
+| Admin orders | `admin/orders/{id}/cancel/` | Admin |
 
 The roadmap and business rules for each stage are in [`docs/BACKEND_PLAN.md`](docs/BACKEND_PLAN.md).
 
@@ -130,7 +132,7 @@ Every error response has the same body:
 | 403 | `PERMISSION_DENIED` |
 | 404 | `NOT_FOUND` |
 | 405 | `METHOD_NOT_ALLOWED` |
-| 409 | `CONFLICT`, `CART_STORE_CONFLICT`, `PRODUCT_UNAVAILABLE`, `STORE_CLOSED`, `INSUFFICIENT_STOCK` |
+| 409 | `CONFLICT`, `CART_STORE_CONFLICT`, `PRODUCT_UNAVAILABLE`, `STORE_CLOSED`, `INSUFFICIENT_STOCK`, `EMPTY_CART`, `INVALID_TRANSITION` |
 | 429 | `THROTTLED` (`details.wait_seconds`) |
 | 500 | `INTERNAL_ERROR` |
 

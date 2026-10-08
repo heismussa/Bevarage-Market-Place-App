@@ -259,7 +259,8 @@ class OwnerProductDetailView(OwnerProductQuerysetMixin, generics.RetrieveUpdateD
         summary="Set stock quantity",
         description=(
             "Stock 0 makes the product OUT_OF_STOCK. Stock above 0 on an OUT_OF_STOCK product "
-            "makes it AVAILABLE. UNAVAILABLE products stay UNAVAILABLE unless stock is set to 0."
+            "makes it AVAILABLE. UNAVAILABLE products stay UNAVAILABLE until the owner changes "
+            "availability_status."
         ),
         request=StockUpdateSerializer,
         responses={200: OwnerProductSerializer, **standard_errors(400, 401, 403, 404)},

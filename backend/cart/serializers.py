@@ -48,6 +48,9 @@ class CartLineSerializer(serializers.Serializer):
     price_changed = serializers.BooleanField()
     available = serializers.BooleanField()
     max_available = serializers.IntegerField()
+    counted_in_total = serializers.BooleanField(
+        help_text="False when the line cannot be bought now; it is left out of the subtotal."
+    )
 
 
 class CartWarningSerializer(serializers.Serializer):

@@ -37,6 +37,7 @@ CART_EXAMPLE = {
             "price_changed": True,
             "available": True,
             "max_available": 118,
+            "counted_in_total": True,
         }
     ],
     "item_count": 2,
@@ -115,9 +116,10 @@ class CartView(CustomerCartView):
         tags=["cart"],
         summary="My cart",
         description=(
-            "Totals use CURRENT product prices. price_changed flags lines whose price differs "
-            "from when they were added. Stock is not reserved. warnings lists every problem "
-            "that would block checkout."
+            "Totals use CURRENT product prices. Only lines with counted_in_total=true (available "
+            "and within stock) count toward subtotal; delivery_fee is 0 when none do. "
+            "price_changed flags lines whose price differs from when they were added. Stock is "
+            "not reserved. warnings lists every problem that would block checkout."
         ),
         responses={200: CartSerializer, **standard_errors(401, 403)},
         examples=CART_EXAMPLES,

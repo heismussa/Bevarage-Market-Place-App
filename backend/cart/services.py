@@ -25,16 +25,23 @@ def _money(value):
 # --- Validation -----------------------------------------------------------------------
 
 
+def stock_message(name, max_available):
+    if max_available <= 0:
+        return f"{name} is sold out."
+    return f"Only {max_available} of {name} left in stock."
+
+
 def _product_problem(product):
     """Return (code, message) when the product cannot be bought right now, else None.
-    Stock quantity is checked separately because it depends on the requested quantity."""
+    Stock is checked separately because it depends on the requested quantity, so a
+    sold-out (OUT_OF_STOCK) product is reported as INSUFFICIENT_STOCK."""
     store = product.store
     if not store.is_active or store.status != StoreStatus.OPEN:
         return ErrorCode.STORE_CLOSED, f"{store.store_name} is not accepting orders right now."
     if (
         product.deleted_at is not None
         or product.category.status != CategoryStatus.ACTIVE
-        or product.availability_status != AvailabilityStatus.AVAILABLE
+        or product.availability_status == AvailabilityStatus.UNAVAILABLE
     ):
         return ErrorCode.PRODUCT_UNAVAILABLE, f"{product.name} is not available."
     return None
@@ -56,7 +63,7 @@ def _ensure_in_stock(product, quantity):
     if quantity > product.stock_quantity:
         raise ApiError(
             ErrorCode.INSUFFICIENT_STOCK,
-            f"Only {product.stock_quantity} of {product.name} left in stock.",
+            stock_message(product.name, product.stock_quantity),
             status_code=status.HTTP_409_CONFLICT,
             details={
                 "product_id": product.pk,
@@ -172,6 +179,7 @@ class CartLine:
     price_changed: bool
     available: bool
     max_available: int
+    counted_in_total: bool
 
 
 @dataclass
@@ -201,7 +209,11 @@ def load_cart(customer):
 
 def price_cart(cart):
     """Price the cart from CURRENT product prices. The stored unit_price is only used to
-    detect price changes since the item was added."""
+    detect price changes since the item was added.
+
+    Only lines the customer can buy right now (available, quantity within stock) count
+    toward the subtotal. The delivery fee is charged only when at least one line counts.
+    """
     if cart is None:
         return CartSummary(store=None, lines=[], subtotal=ZERO, delivery_fee=ZERO, total=ZERO)
 
@@ -212,9 +224,11 @@ def price_cart(cart):
         product = item.product
         problem = _product_problem(product)
         available = problem is None and product.stock_quantity > 0
+        counted = available and item.quantity <= product.stock_quantity
         line_total = _money(product.price * item.quantity)
         price_changed = item.unit_price != product.price
-        subtotal += line_total
+        if counted:
+            subtotal += line_total
         lines.append(
             CartLine(
                 item=item,
@@ -222,6 +236,7 @@ def price_cart(cart):
                 price_changed=price_changed,
                 available=available,
                 max_available=product.stock_quantity if available else 0,
+                counted_in_total=counted,
             )
         )
         if problem is not None and problem[0] == ErrorCode.PRODUCT_UNAVAILABLE:
@@ -230,7 +245,7 @@ def price_cart(cart):
             warnings.append(
                 _warning(
                     ErrorCode.INSUFFICIENT_STOCK,
-                    f"Only {product.stock_quantity} of {product.name} left in stock.",
+                    stock_message(product.name, product.stock_quantity),
                     item.pk,
                 )
             )
@@ -252,7 +267,8 @@ def price_cart(cart):
                 ErrorCode.STORE_CLOSED, f"{store.store_name} is not accepting orders right now."
             ),
         )
-    delivery_fee = _money(store.delivery_fee) if store is not None else ZERO
+    has_buyable_lines = any(line.counted_in_total for line in lines)
+    delivery_fee = _money(store.delivery_fee) if has_buyable_lines else ZERO
     return CartSummary(
         store=store,
         lines=lines,
