@@ -1,0 +1,19 @@
+{
+  "name": "beverage-marketplace-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "customer-app",
+    "owner-dashboard"
+  ],
+  "scripts": {
+    "install:check": "npm ls --workspaces --depth=0",
+    "build": "npm run build --workspaces --if-present",
+    "dev:owner": "npm run dev --workspace=@beverage/owner-dashboard",
+    "dev:customer": "npm run dev --workspace=@beverage/customer-app"
+  },
+  "dependencies": {
+    "axios": "^1.20.0"
+  }
+}
