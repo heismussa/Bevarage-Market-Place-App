@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "Beverage Customer",
+    "slug": "beverage-customer-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "plugins": [
+      "expo-secure-store"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "usesCleartextTraffic": true
+    }
+  }
+}
