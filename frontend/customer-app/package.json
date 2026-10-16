@@ -10,7 +10,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web:expo": "expo start --web",
-    "build:web": "vite build"
+    "build:web": "vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@beverage/api": "^1.0.0",

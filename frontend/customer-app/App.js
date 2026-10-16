@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
@@ -9,87 +9,72 @@ import {
   StyleSheet,
   Text,
   View,
-} from 'react-native';
-import { colors, spacing, radius } from '@beverage/ui-tokens';
-import {
-  getHealth,
-  getStores,
-  getCategories,
-} from './src/mobileApi';
+} from 'react-native'
+import { colors, spacing, radius } from '@beverage/ui-tokens'
+import { getHealth, getStores, getCategories } from './src/mobileApi'
 
 function getList(data) {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.results)) return data.results;
-  return [];
+  if (Array.isArray(data)) return data
+  if (Array.isArray(data?.results)) return data.results
+  return []
 }
 
 export default function App() {
-  const [health, setHealth] = useState('Checking connection...');
-  const [categories, setCategories] = useState([]);
-  const [stores, setStores] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState('');
+  const [health, setHealth] = useState('Checking connection...')
+  const [categories, setCategories] = useState([])
+  const [stores, setStores] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState('')
 
   async function loadMarketplace(isRefresh = false) {
     if (isRefresh) {
-      setRefreshing(true);
+      setRefreshing(true)
     } else {
-      setLoading(true);
+      setLoading(true)
     }
 
-    setError('');
+    setError('')
 
     try {
-      const healthData = await getHealth();
-      setHealth(healthData.status || 'Connected');
+      const healthData = await getHealth()
+      setHealth(healthData.status || 'Connected')
 
-      const results = await Promise.allSettled([
-        getCategories(),
-        getStores(),
-      ]);
+      const results = await Promise.allSettled([getCategories(), getStores()])
 
       if (results[0].status === 'fulfilled') {
-        setCategories(getList(results[0].value));
+        setCategories(getList(results[0].value))
       }
 
       if (results[1].status === 'fulfilled') {
-        setStores(getList(results[1].value));
+        setStores(getList(results[1].value))
       }
 
       const failed = results
         .map((result, index) =>
-          result.status === 'rejected'
-            ? ['categories', 'stores'][index]
-            : null
+          result.status === 'rejected' ? ['categories', 'stores'][index] : null,
         )
-        .filter(Boolean);
+        .filter(Boolean)
 
       if (failed.length) {
-        setError(`Unable to load ${failed.join(' and ')}.`);
+        setError(`Unable to load ${failed.join(' and ')}.`)
       }
     } catch (err) {
-      setHealth('Connection failed');
-      setError(
-        err?.message ||
-          'Could not connect to the marketplace API.'
-      );
+      setHealth('Connection failed')
+      setError(err?.message || 'Could not connect to the marketplace API.')
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      setLoading(false)
+      setRefreshing(false)
     }
   }
 
   useEffect(() => {
-    loadMarketplace();
-  }, []);
+    loadMarketplace()
+  }, [])
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor={colors.primary}
-      />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
 
       <ScrollView
         contentContainerStyle={styles.container}
@@ -103,9 +88,7 @@ export default function App() {
       >
         <View style={styles.hero}>
           <Text style={styles.eyebrow}>BEVERAGE DELIVERY</Text>
-          <Text style={styles.title}>
-            Find your favourite drinks
-          </Text>
+          <Text style={styles.title}>Find your favourite drinks</Text>
           <Text style={styles.subtitle}>
             Discover beverage stores and explore what's available.
           </Text>
@@ -119,30 +102,21 @@ export default function App() {
                   : null,
               ]}
             />
-            <Text style={styles.statusText}>
-              API: {health}
-            </Text>
+            <Text style={styles.statusText}>API: {health}</Text>
           </View>
         </View>
 
         {error ? (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
-            <Text style={styles.errorHint}>
-              Pull down to try again.
-            </Text>
+            <Text style={styles.errorHint}>Pull down to try again.</Text>
           </View>
         ) : null}
 
         {loading ? (
           <View style={styles.loading}>
-            <ActivityIndicator
-              size="large"
-              color={colors.primary}
-            />
-            <Text style={styles.loadingText}>
-              Loading marketplace...
-            </Text>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Loading marketplace...</Text>
           </View>
         ) : (
           <>
@@ -153,9 +127,7 @@ export default function App() {
                 <FlatList
                   horizontal
                   data={categories}
-                  keyExtractor={(item, index) =>
-                    String(item.id ?? index)
-                  }
+                  keyExtractor={(item, index) => String(item.id ?? index)}
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.horizontalList}
                   renderItem={({ item }) => (
@@ -168,9 +140,7 @@ export default function App() {
                 />
               ) : (
                 <View style={styles.emptyCard}>
-                  <Text style={styles.emptyTitle}>
-                    No categories yet
-                  </Text>
+                  <Text style={styles.emptyTitle}>No categories yet</Text>
                   <Text style={styles.emptyText}>
                     Categories will appear here when available.
                   </Text>
@@ -179,9 +149,7 @@ export default function App() {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                Available stores
-              </Text>
+              <Text style={styles.sectionTitle}>Available stores</Text>
 
               {stores.length ? (
                 stores.map((store, index) => (
@@ -194,9 +162,7 @@ export default function App() {
                     </View>
                     <View style={styles.storeDetails}>
                       <Text style={styles.storeName}>
-                        {store.name ||
-                          store.store_name ||
-                          'Beverage store'}
+                        {store.name || store.store_name || 'Beverage store'}
                       </Text>
                       <Text style={styles.storeDescription}>
                         {store.description ||
@@ -208,12 +174,10 @@ export default function App() {
                 ))
               ) : (
                 <View style={styles.emptyCard}>
-                  <Text style={styles.emptyTitle}>
-                    No stores available yet
-                  </Text>
+                  <Text style={styles.emptyTitle}>No stores available yet</Text>
                   <Text style={styles.emptyText}>
-                    Stores will appear here when they are registered
-                    and available in the marketplace.
+                    Stores will appear here when they are registered and
+                    available in the marketplace.
                   </Text>
                 </View>
               )}
@@ -221,12 +185,10 @@ export default function App() {
           </>
         )}
 
-        <Text style={styles.footer}>
-          Beverage Marketplace
-        </Text>
+        <Text style={styles.footer}>Beverage Marketplace</Text>
       </ScrollView>
     </SafeAreaView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -405,4 +367,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.extraLarge,
   },
-});
+})

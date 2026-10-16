@@ -28,7 +28,7 @@ export default function Login({ onSuccess }: LoginProps) {
 
     try {
       await login(phone.trim(), password)
-      const user = await getMe() as UserProfile
+      const user = (await getMe()) as UserProfile
 
       if (user.role !== 'STORE_OWNER') {
         clearTokens()
@@ -76,7 +76,10 @@ export default function Login({ onSuccess }: LoginProps) {
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">
           <div>
-            <label htmlFor="phone" className="mb-2 block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="phone"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
               Phone number
             </label>
             <input
@@ -92,7 +95,10 @@ export default function Login({ onSuccess }: LoginProps) {
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-2 block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="password"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
               Password
             </label>
             <div className="relative">
@@ -118,7 +124,10 @@ export default function Login({ onSuccess }: LoginProps) {
           </div>
 
           {error && (
-            <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
+            <p
+              role="alert"
+              className="rounded-xl bg-red-50 p-3 text-sm text-red-700"
+            >
               {error}
             </p>
           )}
@@ -134,7 +143,8 @@ export default function Login({ onSuccess }: LoginProps) {
         </form>
 
         <p className="mt-6 text-center text-xs leading-5 text-gray-500">
-          Use your registered store-owner account. Customer accounts cannot access this dashboard.
+          Use your registered store-owner account. Customer accounts cannot
+          access this dashboard.
         </p>
       </section>
     </main>

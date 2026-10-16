@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { getHealth, getStores, getCategories } from '@beverage/api'
@@ -55,7 +54,7 @@ function App() {
       setError(
         failures.length
           ? `Could not load: ${failures.join(' and ')}. Check the browser console.`
-          : ''
+          : '',
       )
     }
 
@@ -110,5 +109,5 @@ function App() {
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <App />
-  </React.StrictMode>
+  </React.StrictMode>,
 )

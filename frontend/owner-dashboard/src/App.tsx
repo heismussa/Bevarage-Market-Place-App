@@ -147,14 +147,19 @@ function Overview({
         {stats.map((stat) => {
           const Icon = stat.icon
           return (
-            <div key={stat.label} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <div
+              key={stat.label}
+              className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm"
+            >
               <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-500">{stat.label}</p>
                 <span className="rounded-xl bg-emerald-50 p-2 text-emerald-700">
                   <Icon size={20} />
                 </span>
               </div>
-              <p className="mt-4 text-2xl font-bold text-gray-900">{stat.value}</p>
+              <p className="mt-4 text-2xl font-bold text-gray-900">
+                {stat.value}
+              </p>
               <p className="mt-2 text-xs text-gray-500">{stat.note}</p>
             </div>
           )
@@ -184,10 +189,15 @@ function Overview({
                     ? order.customer
                     : order.customer?.full_name || 'Customer'
 
-                const status = readableStatus(order.order_status ?? order.status)
+                const status = readableStatus(
+                  order.order_status ?? order.status,
+                )
 
                 return (
-                  <tr key={order.id ?? order.order_number ?? index} className="border-b border-gray-50 last:border-0">
+                  <tr
+                    key={order.id ?? order.order_number ?? index}
+                    className="border-b border-gray-50 last:border-0"
+                  >
                     <td className="py-4 font-semibold text-gray-800">
                       {order.order_number ?? order.id ?? '—'}
                     </td>
@@ -258,9 +268,11 @@ function DashboardLayout({
         />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-gray-100 bg-white transition-transform lg:translate-x-0 ${
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}>
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-gray-100 bg-white transition-transform lg:translate-x-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
         <div className="flex h-20 items-center justify-between border-b border-gray-100 px-6">
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-emerald-700 p-2 text-white">
@@ -271,7 +283,11 @@ function DashboardLayout({
               <p className="text-xs text-gray-500">Owner dashboard</p>
             </div>
           </div>
-          <button onClick={() => setSidebarOpen(false)} aria-label="Close navigation" className="text-gray-500 lg:hidden">
+          <button
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close navigation"
+            className="text-gray-500 lg:hidden"
+          >
             <X size={21} />
           </button>
         </div>
@@ -322,7 +338,9 @@ function DashboardLayout({
               <Menu size={22} />
             </button>
             <div>
-              <p className="text-sm font-semibold text-gray-800">{user.full_name}</p>
+              <p className="text-sm font-semibold text-gray-800">
+                {user.full_name}
+              </p>
               <p className="text-xs text-gray-500">{store.store_name}</p>
             </div>
           </div>
@@ -349,11 +367,26 @@ function DashboardLayout({
                 />
               }
             />
-            <Route path="/products" element={<PlaceholderPage title="Products" />} />
-            <Route path="/orders" element={<PlaceholderPage title="Orders" />} />
-            <Route path="/store" element={<PlaceholderPage title="My Store" />} />
-            <Route path="/settings" element={<PlaceholderPage title="Settings" />} />
-            <Route path="*" element={<PlaceholderPage title="Page not found" />} />
+            <Route
+              path="/products"
+              element={<PlaceholderPage title="Products" />}
+            />
+            <Route
+              path="/orders"
+              element={<PlaceholderPage title="Orders" />}
+            />
+            <Route
+              path="/store"
+              element={<PlaceholderPage title="My Store" />}
+            />
+            <Route
+              path="/settings"
+              element={<PlaceholderPage title="Settings" />}
+            />
+            <Route
+              path="*"
+              element={<PlaceholderPage title="Page not found" />}
+            />
           </Routes>
         </main>
       </div>
@@ -389,7 +422,9 @@ export default function App() {
         setStore(null)
         setDashboard({})
         setProductCount(0)
-        setError('Your account does not have a store yet. Store registration is the next step.')
+        setError(
+          'Your account does not have a store yet. Store registration is the next step.',
+        )
         return
       }
 
@@ -421,7 +456,9 @@ export default function App() {
         setStore(null)
         setError('Your session has expired. Please sign in again.')
       } else {
-        setError('Could not load your store data. Check the backend and try again.')
+        setError(
+          'Could not load your store data. Check the backend and try again.',
+        )
       }
     } finally {
       setLoading(false)
@@ -438,7 +475,7 @@ export default function App() {
       }
 
       try {
-        const profile = await getMe() as UserProfile
+        const profile = (await getMe()) as UserProfile
         if (active) await loadOwnerData(profile)
       } catch {
         clearTokens()
@@ -469,12 +506,17 @@ export default function App() {
     <BrowserRouter>
       {loading ? (
         <main className="flex min-h-screen items-center justify-center bg-[#f7f9f7]">
-          <p className="text-sm text-gray-600">Loading your owner dashboard...</p>
+          <p className="text-sm text-gray-600">
+            Loading your owner dashboard...
+          </p>
         </main>
       ) : user && store ? (
         <>
           {error && (
-            <div role="alert" className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <div
+              role="alert"
+              className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+            >
               {error}
             </div>
           )}
@@ -490,11 +532,16 @@ export default function App() {
         <main className="flex min-h-screen items-center justify-center bg-[#f7f9f7] px-4">
           <section className="max-w-lg rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm">
             <Store className="mx-auto text-emerald-700" size={40} />
-            <h1 className="mt-4 text-xl font-bold text-gray-900">Welcome, {user.full_name}</h1>
+            <h1 className="mt-4 text-xl font-bold text-gray-900">
+              Welcome, {user.full_name}
+            </h1>
             <p className="mt-3 text-sm text-gray-600">
               {error || 'No store is registered on this account yet.'}
             </p>
-            <button onClick={logout} className="mt-6 rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white">
+            <button
+              onClick={logout}
+              className="mt-6 rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white"
+            >
               Log out
             </button>
           </section>
@@ -502,7 +549,10 @@ export default function App() {
       ) : (
         <>
           {error && (
-            <p role="alert" className="bg-amber-50 px-4 py-3 text-center text-sm text-amber-800">
+            <p
+              role="alert"
+              className="bg-amber-50 px-4 py-3 text-center text-sm text-amber-800"
+            >
               {error}
             </p>
           )}
