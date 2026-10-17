@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #f5f7fb;
+  --color-surface: #ffffff;
+  --color-foreground: #172033;
+  --color-muted: #5b6475;
+  --color-primary: #147d55;
+  --color-primary-foreground: #ffffff;
+  --color-border: #e4e8f0;
+  --color-danger: #c62828;
+  --radius-xl: 1rem;
+}
+
+:root {
+  color-scheme: light;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: var(--color-background);
+  color: var(--color-foreground);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--color-background);
+}
+
+#root {
+  min-height: 100vh;
+}

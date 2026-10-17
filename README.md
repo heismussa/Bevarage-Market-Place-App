@@ -14,7 +14,7 @@ backend/                 Django project (config) and apps
   orders/                Order, OrderItem, OrderStatusHistory
   payments/              Payment
   notifications/         Notification
-frontend/                Empty. Reserved for the client.
+frontend/                Expo customer app, React owner dashboard, shared API package (see frontend/README.md)
 docs/erd/                DBML source of truth
 docker-compose.yml
 .env.example
