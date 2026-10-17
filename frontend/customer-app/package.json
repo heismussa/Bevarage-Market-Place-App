@@ -1,0 +1,31 @@
+{
+  "name": "@beverage/customer-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "expo start",
+    "build": "vite build",
+    "dev:web": "vite",
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web:expo": "expo start --web",
+    "build:web": "vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@beverage/api": "^1.0.0",
+    "@beverage/ui-tokens": "^1.0.0",
+    "expo": "^58.0.12",
+    "expo-secure-store": "~58.0.2",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-native": "0.88.0",
+    "react-native-safe-area-context": "~5.10.1",
+    "vite": "^8.3.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.2"
+  },
+  "main": "expo/AppEntry"
+}
