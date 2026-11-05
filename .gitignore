@@ -22,6 +22,9 @@ staticfiles/
 local_settings.py
 db.sqlite3
 
+# Node
+node_modules/
+
 # IDE / OS
 .idea/
 .vscode/

@@ -261,6 +261,22 @@ cancelled.
   `auth/password/change/` returns fresh tokens. The SMS backend is a console stub.
 - **2026-10-08, product search:** launch with one store, so per-store product search is
   enough. Global search across stores comes when more shops join.
+- **2026-10-08, confirmed by the developer:** LOW_STOCK on owner edits stays; "Not
+  charged" is the label for a cancelled unpaid order.
+- **2026-10-08, mockup extras (no schema change):**
+  - Dashboard `last_7_days_vs_previous` and analytics `compared_to_previous`: the period
+    against the equally long period before it; change percentages with one decimal,
+    `null` when the previous period is zero.
+  - Dashboard `payment_methods_last_7_days` and analytics `payment_methods`: COMPLETED
+    orders by the latest payment's method; the four checkout methods always listed.
+  - `GET products/popular/`: public, best sellers by units in COMPLETED orders over 30
+    days, buyable products only, unsold products left out, filter by store or category.
+  - `GET owner/stores/{id}/orders/export/`: CSV with the list's filters, at most 5000
+    rows, spreadsheet formulas neutralised in free-text cells.
+- **2026-10-08, this version hides:** store ratings, favourites, opening hours and the
+  settings switches (they need schema changes). Planned for a later version.
+- **2026-10-08, frontend stack:** Expo (React Native) customer app and React (Vite)
+  owner dashboard, both using this one Django API.
 
 ## Follow-ups after all stages
 
@@ -268,6 +284,9 @@ cancelled.
   stores join.
 - **Real SMS provider** for password reset codes, plus a shared cache (Redis) so
   throttles hold across processes.
+- **Later version (schema changes, ask first):** store ratings and reviews,
+  favourites, opening hours, and owner settings switches (notification and low-stock
+  alert preferences).
 
 - **Remind the developer:** they have questions about the admin cancel endpoint and
   admin screens. Raise this once Stages 0-7 are done.

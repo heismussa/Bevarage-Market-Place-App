@@ -1,6 +1,6 @@
 # Beverage Delivery Marketplace
 
-Django REST Framework backend for a beverage delivery marketplace. The database shape comes from [`docs/erd/beverage_delivery_erd_v2_1.dbml`](docs/erd/beverage_delivery_erd_v2_1.dbml). This repository currently contains the backend foundation only: the data model, Django admin, demo seed data, and phone/password authentication.
+Django REST Framework API plus two frontends: an Expo customer app and a React owner dashboard. The database shape comes from [`docs/erd/beverage_delivery_erd_v2_1.dbml`](docs/erd/beverage_delivery_erd_v2_1.dbml).
 
 ## Folder structure
 
@@ -14,7 +14,7 @@ backend/                 Django project (config) and apps
   orders/                Order, OrderItem, OrderStatusHistory
   payments/              Payment
   notifications/         Notification
-frontend/                Empty. Reserved for the client.
+frontend/                Expo customer app, React owner dashboard, shared API package (see [frontend/README.md](frontend/README.md))
 docs/erd/                DBML source of truth
 docker-compose.yml
 .env.example
@@ -23,6 +23,16 @@ docker-compose.yml
 Driver and Delivery tables are in the ERD for later and are not implemented.
 
 ## Setup
+
+Quick start for local development: one script creates `.env` with random local
+secrets, starts Docker, migrates and loads demo data.
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts\setup-dev.ps1   # Windows
+bash scripts/setup-dev.sh                                        # macOS / Linux
+```
+
+The generated `.env` is for local development only (`ALLOWED_HOSTS=*`). Manual setup:
 
 1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 2. Copy the environment file and replace the placeholders:
@@ -41,6 +51,17 @@ Driver and Delivery tables are in the ERD for later and are not implemented.
    ```
 
    The API listens on <http://localhost:8000>. On startup the backend applies migrations to PostgreSQL.
+
+Then run the apps from `frontend/` (see [frontend/README.md](frontend/README.md)):
+
+```bash
+cd frontend
+npm install
+npm run dev:owner      # http://localhost:5173
+npm run dev:customer   # Expo; press a for Android or w for web
+```
+
+Copy `frontend/customer-app/.env.example` to `.env` and `frontend/owner-dashboard/.env.example` to `.env.local` first. Both default to `http://localhost:8000/api/v1`.
 
 ## Commands
 
@@ -93,13 +114,13 @@ The full endpoint list, with examples, is in the API docs. A short map by area:
 
 | Area | Endpoints | Who |
 | --- | --- | --- |
-| Catalog | `categories/`, `stores/`, `stores/{id}/`, `stores/{id}/products/`, `products/{id}/` | Anyone |
+| Catalog | `categories/`, `stores/`, `stores/{id}/`, `stores/{id}/products/`, `products/popular/`, `products/{id}/` | Anyone |
 | Owner stores | `owner/stores/`, `owner/stores/{id}/` | Store owner |
 | Owner products | `owner/stores/{store_id}/products/`, `owner/products/{id}/`, `owner/products/{id}/stock/` | Store owner |
 | Addresses | `addresses/`, `addresses/{id}/`, `addresses/{id}/set-default/` | Customer |
 | Cart | `cart/`, `cart/items/`, `cart/items/{id}/` | Customer |
 | Orders | `orders/`, `orders/{id}/`, `orders/{id}/cancel/` | Customer |
-| Owner orders | `owner/stores/{id}/orders/`, `owner/orders/{id}/`, `owner/orders/{id}/transition/` | Store owner |
+| Owner orders | `owner/stores/{id}/orders/`, `owner/stores/{id}/orders/export/` (CSV), `owner/orders/{id}/`, `owner/orders/{id}/transition/` | Store owner |
 | Owner dashboard | `owner/stores/{id}/dashboard/`, `owner/stores/{id}/analytics/` | Store owner |
 | Admin orders | `admin/orders/{id}/cancel/` | Admin |
 | Payments | `orders/{id}/pay/`, `orders/{id}/payment/` | Customer |

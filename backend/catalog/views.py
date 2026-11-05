@@ -1,6 +1,10 @@
+from datetime import timedelta
 from functools import cached_property
 
+from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiExample, extend_schema, extend_schema_view
 from rest_framework import generics, status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -9,17 +13,21 @@ from rest_framework.response import Response
 
 from accounts.permissions import IsStoreOwner
 from catalog import services
-from catalog.filters import OwnerProductFilter, PublicProductFilter
-from catalog.models import Category, CategoryStatus, Product
+from catalog.filters import OwnerProductFilter, PopularProductFilter, PublicProductFilter
+from catalog.models import AvailabilityStatus, Category, CategoryStatus, Product
 from catalog.serializers import (
     CategorySerializer,
     OwnerProductSerializer,
+    PopularProductSerializer,
     PublicProductSerializer,
     StockUpdateSerializer,
 )
 from core.ownership import OwnerField, OwnerScopedQuerysetMixin, get_owned_or_404
 from core.schema import standard_errors
-from stores.models import Store
+from orders.models import OrderStatus
+from stores.models import Store, StoreStatus
+
+POPULAR_PRODUCTS_DAYS = 30
 
 CATEGORY_EXAMPLE = {"id": 1, "name": "Soda", "slug": "soda", "description": "Soda"}
 
@@ -78,6 +86,26 @@ def public_products():
     ).select_related("store", "category")
 
 
+def popular_products():
+    """Buyable products of OPEN stores, best sellers first; unsold products are left out."""
+    since = timezone.now() - timedelta(days=POPULAR_PRODUCTS_DAYS)
+    sold = Q(
+        order_items__order__order_status=OrderStatus.COMPLETED,
+        order_items__order__ordered_at__gte=since,
+    )
+    return (
+        public_products()
+        .filter(
+            store__status=StoreStatus.OPEN,
+            availability_status=AvailabilityStatus.AVAILABLE,
+            stock_quantity__gt=0,
+        )
+        .annotate(sold_quantity=Sum("order_items__quantity", filter=sold))
+        .filter(sold_quantity__gt=0)
+        .order_by("-sold_quantity", "name", "id")
+    )
+
+
 @extend_schema_view(
     get=extend_schema(
         tags=["catalog"],
@@ -122,6 +150,37 @@ class StoreProductListView(generics.ListAPIView):
             return Product.objects.none()
         store = get_object_or_404(Store, pk=self.kwargs["store_id"], is_active=True)
         return public_products().filter(store=store)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        tags=["catalog"],
+        summary="Popular products",
+        description=(
+            f"Best sellers by units sold in COMPLETED orders over the last "
+            f"{POPULAR_PRODUCTS_DAYS} days. Only products a customer can buy now (OPEN store, "
+            "AVAILABLE, in stock); products with no sales are left out, so the list can be "
+            "empty. ?store= limits it to one store, ?category= to one category."
+        ),
+        responses={200: PopularProductSerializer(many=True), **standard_errors(400)},
+        examples=[
+            OpenApiExample(
+                "Product",
+                value={**PUBLIC_PRODUCT_EXAMPLE, "sold_quantity": 42},
+                response_only=True,
+            )
+        ],
+    ),
+)
+class PopularProductListView(generics.ListAPIView):
+    serializer_class = PopularProductSerializer
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = PopularProductFilter
+
+    def get_queryset(self):
+        return popular_products()
 
 
 @extend_schema_view(

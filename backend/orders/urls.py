@@ -5,6 +5,7 @@ from orders.owner_views import (
     OwnerOrderTransitionView,
     OwnerStoreAnalyticsView,
     OwnerStoreDashboardView,
+    OwnerStoreOrderExportView,
     OwnerStoreOrderListView,
 )
 from orders.views import (
@@ -19,6 +20,11 @@ urlpatterns = [
         "owner/stores/<int:pk>/orders/",
         OwnerStoreOrderListView.as_view(),
         name="owner-store-orders",
+    ),
+    path(
+        "owner/stores/<int:pk>/orders/export/",
+        OwnerStoreOrderExportView.as_view(),
+        name="owner-store-orders-export",
     ),
     path(
         "owner/stores/<int:pk>/dashboard/",

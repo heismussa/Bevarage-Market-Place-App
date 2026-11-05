@@ -214,6 +214,41 @@ class LowStockItemSerializer(serializers.Serializer):
     availability_status = serializers.CharField()
 
 
+class PeriodTotalsSerializer(serializers.Serializer):
+    date_from = serializers.DateField()
+    date_to = serializers.DateField()
+    total_orders = serializers.IntegerField(help_text="Orders placed (visible to the owner).")
+    total_sales = serializers.DecimalField(
+        max_digits=14, decimal_places=2, help_text="total_amount of COMPLETED orders."
+    )
+
+
+class PeriodComparisonSerializer(serializers.Serializer):
+    current = PeriodTotalsSerializer()
+    previous = PeriodTotalsSerializer(help_text="The equally long period just before current.")
+    orders_change_percent = serializers.DecimalField(
+        max_digits=8,
+        decimal_places=1,
+        allow_null=True,
+        help_text="e.g. 12.5 means +12.5%. null when the previous period had no orders.",
+    )
+    sales_change_percent = serializers.DecimalField(
+        max_digits=8,
+        decimal_places=1,
+        allow_null=True,
+        help_text="null when the previous period had no sales.",
+    )
+
+
+class PaymentMethodShareSerializer(serializers.Serializer):
+    payment_method = serializers.ChoiceField(choices=PaymentMethod.choices)
+    orders = serializers.IntegerField(help_text="COMPLETED orders paid with this method.")
+    sales = serializers.DecimalField(max_digits=14, decimal_places=2)
+    orders_percent = serializers.DecimalField(
+        max_digits=5, decimal_places=1, help_text="Share of COMPLETED orders, 0.0 to 100.0."
+    )
+
+
 class DashboardSerializer(serializers.Serializer):
     total_orders = serializers.IntegerField()
     pending_orders = serializers.IntegerField()
@@ -223,6 +258,10 @@ class DashboardSerializer(serializers.Serializer):
     low_stock_count = serializers.IntegerField()
     low_stock_items = LowStockItemSerializer(many=True, help_text="Lowest stock first, max 10.")
     sales_last_7_days = DailySalesSerializer(many=True)
+    last_7_days_vs_previous = PeriodComparisonSerializer(
+        help_text="The last 7 days (ending today) against the 7 days before."
+    )
+    payment_methods_last_7_days = PaymentMethodShareSerializer(many=True)
     recent_orders = OwnerOrderListSerializer(many=True, help_text="Newest 5 orders.")
 
 
@@ -242,6 +281,10 @@ class AnalyticsSerializer(serializers.Serializer):
     total_sales = serializers.DecimalField(max_digits=14, decimal_places=2)
     daily_sales = DailySalesSerializer(many=True)
     top_products = TopProductSerializer(many=True, help_text="Top 10 by quantity sold.")
+    payment_methods = PaymentMethodShareSerializer(many=True)
+    compared_to_previous = PeriodComparisonSerializer(
+        help_text="The range against the equally long period just before it."
+    )
 
 
 class AnalyticsQuerySerializer(serializers.Serializer):

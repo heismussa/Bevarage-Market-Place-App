@@ -22,10 +22,15 @@ def at(day, hour, minute=0):
     return datetime.combine(day, time(hour, minute), tzinfo=DAR)
 
 
-def make_order(store, status, total, ordered_at, items=()):
-    order = OrderFactory(store=store, order_status=status, total_amount=Decimal(total))
+def make_order(store, status, total, ordered_at, items=(), method="CASH"):
+    order = OrderFactory(
+        store=store,
+        order_status=status,
+        total_amount=Decimal(total),
+        payment_status="PENDING" if method == "CASH" else "SUCCESS",
+    )
     Order.objects.filter(pk=order.pk).update(ordered_at=ordered_at)
-    PaymentFactory(order=order)
+    PaymentFactory(order=order, payment_method=method)
     for product, quantity in items:
         OrderItemFactory(order=order, product=product, quantity=quantity)
     return order
@@ -96,6 +101,97 @@ class AnalyticsTests(TestCase):
         self.assertEqual(data["total_sales"], Decimal("0.00"))
         self.assertEqual(data["top_products"], [])
         self.assertEqual(len(data["daily_sales"]), 1)
+
+
+class ComparisonTests(TestCase):
+    def setUp(self):
+        self.store = StoreFactory()
+        self.end = datetime(2026, 10, 8).date()
+        self.start = self.end - timedelta(days=6)
+
+    def test_compares_with_the_equally_long_period_before(self):
+        make_order(self.store, OrderStatus.COMPLETED, "6000.00", at(self.end, 9))
+        make_order(self.store, OrderStatus.COMPLETED, "3000.00", at(self.start, 0, 30))
+        make_order(self.store, OrderStatus.PENDING, "1000.00", at(self.end, 10))
+        make_order(
+            self.store, OrderStatus.COMPLETED, "4000.00", at(self.start - timedelta(1), 23, 59)
+        )
+        make_order(self.store, OrderStatus.COMPLETED, "2000.00", at(self.start - timedelta(7), 8))
+        make_order(self.store, OrderStatus.COMPLETED, "9999.00", at(self.start - timedelta(8), 8))
+        make_order(StoreFactory(), OrderStatus.COMPLETED, "5000.00", at(self.end, 9))
+
+        data = reports.compare_periods(self.store, self.start, self.end)
+
+        self.assertEqual(
+            data["current"],
+            {
+                "date_from": self.start,
+                "date_to": self.end,
+                "total_orders": 3,
+                "total_sales": Decimal("9000.00"),
+            },
+        )
+        self.assertEqual(
+            data["previous"],
+            {
+                "date_from": datetime(2026, 9, 25).date(),
+                "date_to": datetime(2026, 10, 1).date(),
+                "total_orders": 2,
+                "total_sales": Decimal("6000.00"),
+            },
+        )
+        self.assertEqual(data["orders_change_percent"], Decimal("50.0"))
+        self.assertEqual(data["sales_change_percent"], Decimal("50.0"))
+
+    def test_drop_is_negative_and_no_baseline_is_null(self):
+        make_order(self.store, OrderStatus.PENDING, "1000.00", at(self.end, 9))
+        for hour in (8, 9, 10):
+            make_order(
+                self.store, OrderStatus.PENDING, "1000.00", at(self.start - timedelta(1), hour)
+            )
+
+        data = reports.compare_periods(self.store, self.start, self.end)
+
+        self.assertEqual(data["orders_change_percent"], Decimal("-66.7"))
+        self.assertIsNone(data["sales_change_percent"])
+
+
+class PaymentMethodTests(TestCase):
+    def setUp(self):
+        self.store = StoreFactory()
+        self.day = datetime(2026, 10, 8).date()
+
+    def test_completed_orders_by_method_with_all_checkout_methods_listed(self):
+        make_order(self.store, OrderStatus.COMPLETED, "5000.00", at(self.day, 9))
+        make_order(self.store, OrderStatus.COMPLETED, "3000.00", at(self.day, 10), method="MPESA")
+        make_order(self.store, OrderStatus.COMPLETED, "2000.50", at(self.day, 11), method="MPESA")
+        make_order(
+            self.store, OrderStatus.COMPLETED, "1000.00", at(self.day, 12), method="TIGO_PESA"
+        )
+        make_order(self.store, OrderStatus.ACCEPTED, "7000.00", at(self.day, 13), method="MPESA")
+        make_order(self.store, OrderStatus.CANCELLED, "8000.00", at(self.day, 14))
+        make_order(self.store, OrderStatus.COMPLETED, "9000.00", at(self.day - timedelta(1), 9))
+
+        rows = reports.payment_methods(self.store, self.day, self.day)
+
+        self.assertEqual(
+            [
+                (row["payment_method"], row["orders"], row["sales"], row["orders_percent"])
+                for row in rows
+            ],
+            [
+                ("MPESA", 2, Decimal("5000.50"), Decimal("50.0")),
+                ("TIGO_PESA", 1, Decimal("1000.00"), Decimal("25.0")),
+                ("AIRTEL_MONEY", 0, Decimal("0.00"), Decimal("0.0")),
+                ("CASH", 1, Decimal("5000.00"), Decimal("25.0")),
+            ],
+        )
+
+    def test_no_sales(self):
+        rows = reports.payment_methods(self.store, self.day, self.day)
+
+        self.assertEqual([row["orders"] for row in rows], [0, 0, 0, 0])
+        self.assertEqual({row["orders_percent"] for row in rows}, {Decimal("0.0")})
 
 
 class DashboardTests(TestCase):

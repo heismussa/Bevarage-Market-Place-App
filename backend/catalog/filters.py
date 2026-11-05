@@ -21,6 +21,15 @@ class PublicProductFilter(django_filters.FilterSet):
         return queryset.filter(stock_quantity=0)
 
 
+class PopularProductFilter(django_filters.FilterSet):
+    store = django_filters.NumberFilter(field_name="store_id")
+    category = django_filters.NumberFilter(field_name="category_id")
+
+    class Meta:
+        model = Product
+        fields = ("store", "category")
+
+
 class OwnerProductFilter(django_filters.FilterSet):
     category = django_filters.NumberFilter(field_name="category_id")
     availability = django_filters.ChoiceFilter(

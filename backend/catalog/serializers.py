@@ -47,6 +47,16 @@ class PublicProductSerializer(serializers.ModelSerializer):
         return product.stock_quantity > 0
 
 
+class PopularProductSerializer(PublicProductSerializer):
+    sold_quantity = serializers.IntegerField(
+        read_only=True, help_text="Units sold in COMPLETED orders in the last 30 days."
+    )
+
+    class Meta(PublicProductSerializer.Meta):
+        fields = (*PublicProductSerializer.Meta.fields, "sold_quantity")
+        read_only_fields = fields
+
+
 class OwnerProductSerializer(serializers.ModelSerializer):
     category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
     category_detail = CategorySummarySerializer(source="category", read_only=True)

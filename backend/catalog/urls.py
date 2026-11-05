@@ -9,6 +9,7 @@ urlpatterns = [
         views.StoreProductListView.as_view(),
         name="store-product-list",
     ),
+    path("products/popular/", views.PopularProductListView.as_view(), name="product-popular"),
     path("products/<int:pk>/", views.ProductDetailView.as_view(), name="product-detail"),
     path(
         "owner/stores/<int:store_id>/products/",

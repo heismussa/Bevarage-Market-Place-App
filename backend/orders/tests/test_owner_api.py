@@ -1,5 +1,8 @@
+import csv
+import io
 from datetime import datetime, time, timedelta
 from decimal import Decimal
+from unittest import mock
 from zoneinfo import ZoneInfo
 
 from django.db import connection
@@ -25,6 +28,14 @@ DAR = ZoneInfo("Africa/Dar_es_Salaam")
 
 def store_orders_url(store):
     return f"/api/v1/owner/stores/{store.pk}/orders/"
+
+
+def export_url(store):
+    return f"/api/v1/owner/stores/{store.pk}/orders/export/"
+
+
+def csv_rows(response):
+    return list(csv.reader(io.StringIO(response.content.decode("utf-8-sig"))))
 
 
 def order_url(order):
@@ -114,12 +125,67 @@ class OwnerOrderListTests(ApiTestCase):
         self.assertEqual(len(response.data["results"]), 5)
         self.assertEqual(len(queries), 4)
 
+    def test_export_csv_uses_list_filters(self):
+        d1, d2 = (datetime(2026, 10, day).date() for day in (1, 2))
+        first = self.make(d1, name="Asha Juma", order_number="BDM-20261001-0001")
+        self.make(d2, name="Baraka Mushi", order_status=OrderStatus.ACCEPTED)
+
+        response = self.client.get(export_url(self.store) + "?date_to=2026-10-01")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response["Content-Type"], "text/csv; charset=utf-8")
+        self.assertIn("attachment; filename=", response["Content-Disposition"])
+        self.assertTrue(response.content.startswith("\ufeff".encode()))
+        header, *rows = csv_rows(response)
+        self.assertEqual(header[:3], ["order_number", "ordered_at", "order_status"])
+        self.assertEqual(len(rows), 1)
+        row = dict(zip(header, rows[0], strict=True))
+        self.assertEqual(row["order_number"], "BDM-20261001-0001")
+        self.assertEqual(row["ordered_at"], "2026-10-01 12:00")
+        self.assertEqual(row["customer_name"], "Asha Juma")
+        self.assertEqual(row["payment_method"], "MPESA")
+        self.assertEqual(row["item_count"], "1")
+        self.assertEqual(row["total_amount"], str(first.total_amount))
+
+    def test_export_neutralises_spreadsheet_formulas(self):
+        self.make(timezone.localdate(), name='=HYPERLINK("http://x","y")')
+
+        header, row = csv_rows(self.client.get(export_url(self.store)))
+
+        self.assertEqual(
+            dict(zip(header, row, strict=True))["customer_name"], '\'=HYPERLINK("http://x","y")'
+        )
+
+    def test_export_refuses_too_many_rows(self):
+        for _ in range(3):
+            self.make(timezone.localdate())
+
+        with mock.patch("orders.reports.EXPORT_MAX_ROWS", 2):
+            error = self.assertError(
+                self.client.get(export_url(self.store)),
+                status.HTTP_400_BAD_REQUEST,
+                ErrorCode.VALIDATION_ERROR,
+            )
+
+        self.assertIn("date_from", error["details"])
+
+    def test_export_query_count_is_constant(self):
+        for _ in range(5):
+            self.make(timezone.localdate())
+
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get(export_url(self.store))
+
+        self.assertEqual(len(csv_rows(response)), 6)
+        self.assertEqual(len(queries), 3)
+
     def test_other_owners_store_is_not_found(self):
         other_store = StoreFactory()
         OrderFactory(store=other_store)
 
         for url in (
             store_orders_url(other_store),
+            export_url(other_store),
             dashboard_url(other_store),
             analytics_url(other_store),
         ):
@@ -133,6 +199,7 @@ class OwnerOrderListTests(ApiTestCase):
 
         for url in (
             store_orders_url(self.store),
+            export_url(self.store),
             dashboard_url(self.store),
             analytics_url(self.store),
         ):
@@ -273,7 +340,15 @@ class DashboardAndAnalyticsApiTests(ApiTestCase):
         self.assertEqual(response.data["low_stock_items"][0]["name"], "Cola")
         self.assertEqual(response.data["sales_last_7_days"][-1]["sales"], "15000.00")
         self.assertEqual(len(response.data["recent_orders"]), 3)
-        self.assertEqual(len(queries), 7)
+        comparison = response.data["last_7_days_vs_previous"]
+        self.assertEqual(comparison["current"]["total_sales"], "15000.00")
+        self.assertEqual(comparison["previous"]["total_orders"], 0)
+        self.assertIsNone(comparison["orders_change_percent"])
+        cash = response.data["payment_methods_last_7_days"][-1]
+        self.assertEqual(
+            (cash["payment_method"], cash["orders"], cash["orders_percent"]), ("CASH", 3, "100.0")
+        )
+        self.assertEqual(len(queries), 9)
 
     def test_analytics_defaults_to_last_30_days(self):
         with CaptureQueriesContext(connection) as queries:
@@ -285,7 +360,12 @@ class DashboardAndAnalyticsApiTests(ApiTestCase):
         self.assertEqual(len(response.data["daily_sales"]), 30)
         self.assertEqual(response.data["completed_orders"], 3)
         self.assertEqual(response.data["top_products"][0]["quantity_sold"], 6)
-        self.assertEqual(len(queries), 5)
+        self.assertEqual(response.data["payment_methods"][-1]["orders"], 3)
+        self.assertEqual(
+            response.data["compared_to_previous"]["previous"]["date_to"],
+            (self.today - timedelta(days=30)).isoformat(),
+        )
+        self.assertEqual(len(queries), 7)
 
     def test_analytics_explicit_range(self):
         query = f"?from={self.today.isoformat()}&to={self.today.isoformat()}"
