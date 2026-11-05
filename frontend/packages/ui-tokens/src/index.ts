@@ -1,31 +1,53 @@
 /**
- * Shared design tokens. A-11 will refine these against the mockups;
- * both apps import from here so colours stay in sync.
+ * Shared BeverageMart brand tokens.
+ * Palette: #021024 #052659 #5483B3 #7DA0CA #C1E8FF
  */
+
+export const brand = {
+  navy950: "#021024",
+  navy800: "#052659",
+  navy700: "#173B65",
+  navy600: "#082C54",
+  blue500: "#5483B3",
+  blue400: "#7DA0CA",
+  blue100: "#C1E8FF",
+  canvas: "#F4F8FC",
+  borderLight: "#DCE8F3",
+} as const;
 
 export const colors = {
   light: {
-    background: "#F5F7FB",
+    background: brand.canvas,
+    sidebar: "#FFFFFF",
     surface: "#FFFFFF",
-    text: "#172033",
-    textMuted: "#5B6475",
-    primary: "#147D55",
+    surfaceMuted: "#EAF2F9",
+    input: "#FFFFFF",
+    text: brand.navy950,
+    textMuted: brand.blue500,
+    primary: brand.navy800,
+    primaryHover: brand.navy950,
     primaryForeground: "#FFFFFF",
-    secondary: "#174A8B",
-    border: "#E4E8F0",
+    primarySoft: brand.blue100,
+    secondary: brand.blue500,
+    border: brand.borderLight,
     success: "#16834A",
     danger: "#C62828",
     warning: "#B45309",
   },
   dark: {
-    background: "#0B1220",
-    surface: "#151E2E",
-    text: "#F5F7FB",
-    textMuted: "#9AA3B5",
-    primary: "#2BB673",
-    primaryForeground: "#062015",
-    secondary: "#5B8FD9",
-    border: "#243044",
+    background: brand.navy950,
+    sidebar: brand.navy950,
+    surface: brand.navy800,
+    surfaceMuted: brand.navy600,
+    input: brand.navy600,
+    text: "#FFFFFF",
+    textMuted: brand.blue400,
+    primary: brand.blue100,
+    primaryHover: brand.blue400,
+    primaryForeground: brand.navy950,
+    primarySoft: brand.navy700,
+    secondary: brand.blue400,
+    border: brand.navy700,
     success: "#34D399",
     danger: "#F87171",
     warning: "#FBBF24",

@@ -12,5 +12,13 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    proxy: {
+      // So the dashboard can call the API through the same origin during local demo.
+      "/api": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+    },
   },
 });
+

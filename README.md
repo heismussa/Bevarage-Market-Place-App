@@ -1,6 +1,6 @@
 # Beverage Delivery Marketplace
 
-Django REST Framework backend for a beverage delivery marketplace. The database shape comes from [`docs/erd/beverage_delivery_erd_v2_1.dbml`](docs/erd/beverage_delivery_erd_v2_1.dbml). This repository currently contains the backend foundation only: the data model, Django admin, demo seed data, and phone/password authentication.
+Django REST Framework API plus two frontends: an Expo customer app and a React owner dashboard. The database shape comes from [`docs/erd/beverage_delivery_erd_v2_1.dbml`](docs/erd/beverage_delivery_erd_v2_1.dbml).
 
 ## Folder structure
 
@@ -14,7 +14,7 @@ backend/                 Django project (config) and apps
   orders/                Order, OrderItem, OrderStatusHistory
   payments/              Payment
   notifications/         Notification
-frontend/                Expo customer app, React owner dashboard, shared API package (see frontend/README.md)
+frontend/                Expo customer app, React owner dashboard, shared API package (see [frontend/README.md](frontend/README.md))
 docs/erd/                DBML source of truth
 docker-compose.yml
 .env.example
@@ -51,6 +51,17 @@ The generated `.env` is for local development only (`ALLOWED_HOSTS=*`). Manual s
    ```
 
    The API listens on <http://localhost:8000>. On startup the backend applies migrations to PostgreSQL.
+
+Then run the apps from `frontend/` (see [frontend/README.md](frontend/README.md)):
+
+```bash
+cd frontend
+npm install
+npm run dev:owner      # http://localhost:5173
+npm run dev:customer   # Expo; press a for Android or w for web
+```
+
+Copy `frontend/customer-app/.env.example` to `.env` and `frontend/owner-dashboard/.env.example` to `.env.local` first. Both default to `http://localhost:8000/api/v1`.
 
 ## Commands
 

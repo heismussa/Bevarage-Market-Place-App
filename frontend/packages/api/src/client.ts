@@ -25,12 +25,25 @@ async function readJsonSafe(response: Response): Promise<unknown> {
   }
 }
 
+const API_PREFIX = "/api/v1";
+
+/**
+ * Schema paths already start with /api/v1, so the typed client's origin must not
+ * include it. Accepts either "http://host:8000" or "http://host:8000/api/v1".
+ */
+function originOf(baseUrl: string): string {
+  const trimmed = baseUrl.replace(/\/$/, "");
+  return trimmed.endsWith(API_PREFIX)
+    ? trimmed.slice(0, -API_PREFIX.length)
+    : trimmed;
+}
+
 async function refreshAccessToken(baseUrl: string): Promise<TokenPair | null> {
   const store = getTokenStore();
   const refresh = await store.getRefresh();
   if (!refresh) return null;
 
-  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/refresh/`, {
+  const response = await fetch(`${originOf(baseUrl)}${API_PREFIX}/auth/refresh/`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({ refresh }),
@@ -78,7 +91,7 @@ function isTokenInvalid(status: number, body: unknown): boolean {
  */
 export function createApiClient(options: CreateApiClientOptions): ApiClient {
   const baseUrl = options.baseUrl.replace(/\/$/, "");
-  const client = createClient<paths>({ baseUrl });
+  const client = createClient<paths>({ baseUrl: originOf(baseUrl) });
 
   const middleware: Middleware = {
     async onRequest({ request }) {
